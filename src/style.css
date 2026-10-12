@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Vazirmatn', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-mono: 'Vazirmatn', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --color-brand-50: #edf8f2;
+  --color-brand-100: #d6f0e2;
+  --color-brand-200: #afe2c6;
+  --color-brand-300: #7ecba3;
+  --color-brand-400: #49ac7d;
+  --color-brand-500: #259160;
+  --color-brand-600: #00643c;
+  --color-brand-700: #045233;
+  --color-brand-800: #07422b;
+  --color-brand-900: #073724;
+  --color-brand-950: #021f14;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(71, 85, 105, 0.6);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.8);
+}
+
+/* Ensure Vazirmatn is consistently applied */
+html,
+body,
+button,
+input,
+select,
+textarea,
+table,
+th,
+td {
+  font-family: var(--font-sans);
+}
