@@ -32,9 +32,16 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Avoid looping if we are already attempting to login
+      // Avoid looping if we are already attempting to login or on public landing/register pages
       const currentPath = window.location.pathname;
-      if (currentPath !== '/login') {
+      const isPublicRoute =
+        currentPath === '/login' ||
+        currentPath.startsWith('/register') ||
+        currentPath.startsWith('/landing') ||
+        currentPath.startsWith('/portal') ||
+        currentPath.startsWith('/join');
+
+      if (!isPublicRoute) {
         localStorage.removeItem('nasrplus_token');
         localStorage.removeItem('nasrplus_user');
         window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;

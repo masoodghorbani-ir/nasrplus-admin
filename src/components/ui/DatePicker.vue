@@ -53,6 +53,7 @@ interface Props {
   size?: 'sm' | 'md' | 'lg';
   dir?: 'rtl' | 'ltr';
   persianDigits?: boolean;
+  inputClass?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -66,6 +67,7 @@ const props = withDefaults(defineProps<Props>(), {
   size: 'md',
   dir: 'rtl',
   persianDigits: true,
+  inputClass: '',
 });
 
 const emit = defineEmits<{
@@ -329,7 +331,7 @@ function updatePosition() {
   if (!triggerRef.value) return;
 
   const rect = triggerRef.value.getBoundingClientRect();
-  const dropdownWidth = 320;
+  const dropdownWidth = Math.min(320, window.innerWidth - 20);
   const dropdownHeight = 360;
 
   const spaceBelow = window.innerHeight - rect.bottom;
@@ -438,7 +440,7 @@ const sizeClasses = computed(() => {
       return 'h-12 px-4 text-base';
     case 'md':
     default:
-      return 'h-10 px-3.5 text-sm';
+      return 'h-11 sm:h-10 px-3.5 text-base sm:text-sm';
   }
 });
 </script>
@@ -453,7 +455,7 @@ const sizeClasses = computed(() => {
     <label
       v-if="label"
       :for="inputId"
-      class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+      class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1"
     >
       {{ label }}
       <span v-if="required" class="text-rose-500 font-bold mr-0.5">*</span>
@@ -467,9 +469,9 @@ const sizeClasses = computed(() => {
       :aria-expanded="isOpen"
       :aria-controls="`dp_popup_${inputId}`"
       :class="[
-        'relative flex items-center justify-between rounded-lg transition-all duration-150 cursor-pointer',
+        'relative flex items-center justify-between rounded-xl transition-all duration-150 cursor-pointer',
         sizeClasses,
-        'bg-white dark:bg-slate-900',
+        inputClass || 'bg-white dark:bg-slate-900',
         error
           ? 'border border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
           : isOpen

@@ -79,6 +79,20 @@ onMounted(() => {
           </transition>
         </router-view>
       </main>
+
+      <!-- Panel Footer -->
+      <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xs py-3.5 px-4 sm:px-6">
+        <div class="max-w-7xl w-full mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-slate-700 dark:text-slate-300">سامانه نصر پلاس</span>
+            <span class="text-slate-300 dark:text-slate-700">&bull;</span>
+            <span>سازمان نظام صنفی رایانه‌ای</span>
+          </div>
+          <div class="font-medium text-slate-600 dark:text-slate-300">
+            کاری از متخصصان کمسیون نرم افزار استان اردبیل
+          </div>
+        </div>
+      </footer>
     </div>
 
     <!-- Global Toast Container -->

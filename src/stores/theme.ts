@@ -5,7 +5,7 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 
 export const useThemeStore = defineStore('theme', () => {
   const isDark = ref(false);
-  const themePreference = ref<ThemePreference>('system');
+  const themePreference = ref<ThemePreference>('light');
   const sidebarCollapsed = ref(false);
   const mobileSidebarOpen = ref(false);
 
@@ -57,7 +57,9 @@ export const useThemeStore = defineStore('theme', () => {
   }
 
   function initTheme(): void {
-    const savedTheme = (localStorage.getItem('nasrplus_theme') as ThemePreference) || 'system';
+    const rawSaved = localStorage.getItem('nasrplus_theme') as ThemePreference | null;
+    // Default theme is strictly 'light' for both landing and management panel
+    const savedTheme: ThemePreference = rawSaved && rawSaved !== 'system' ? rawSaved : 'light';
     const savedSidebar = localStorage.getItem('nasrplus_sidebar_collapsed');
 
     if (savedSidebar !== null) {
@@ -66,7 +68,7 @@ export const useThemeStore = defineStore('theme', () => {
 
     setTheme(savedTheme);
 
-    // Listen for OS color scheme changes
+    // Listen for OS color scheme changes only if preference is explicitly 'system'
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
       if (themePreference.value === 'system') {
         applyTheme(e.matches);

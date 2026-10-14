@@ -5,6 +5,32 @@ import AuthLayout from '@/layouts/AuthLayout.vue';
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/register',
+    name: 'MemberRegister',
+    component: () => import('@/views/public/LandingView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'سامانه ثبت‌نام آنلاین اعضای صنف',
+    },
+  },
+  {
+    path: '/landing',
+    name: 'PublicLanding',
+    component: () => import('@/views/public/LandingView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'پورتال جامع عضویت الکترونیک نظام صنفی رایانه‌ای',
+    },
+  },
+  {
+    path: '/portal',
+    redirect: '/register',
+  },
+  {
+    path: '/join',
+    redirect: '/register',
+  },
+  {
     path: '/login',
     component: AuthLayout,
     children: [
@@ -106,7 +132,7 @@ router.beforeEach((to, _from, next) => {
   const pageTitle = (to.meta?.title as string) || '';
   document.title = pageTitle
     ? `${pageTitle} | سامانه نصر پلاس`
-    : 'سامانه نصر پلاس | سازمان نظام صنفی رایانه‌ای کشور';
+    : 'سامانه نصر پلاس | سازمان نظام صنفی رایانه‌ای اردبیل';
 
   const requiresAuth = to.meta?.requiresAuth !== false;
   const token = localStorage.getItem('nasrplus_token');

@@ -63,29 +63,21 @@ async function handleLogin() {
     <div
       class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none"
     >
-      <!-- Header -->
+      <!-- Header with public logos -->
       <div class="text-center mb-8">
-        <div class="w-14 h-14 mx-auto rounded-2xl bg-brand-600 flex items-center justify-center text-white shadow-lg shadow-brand-600/30 mb-4">
-          <svg
-            class="w-8 h-8"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-            <path d="M2 17l10 5 10-5" />
-            <path d="M2 12l10 5 10-5" />
-          </svg>
+        <div class="w-20 h-20 mx-auto rounded-3xl bg-slate-50 dark:bg-slate-800 p-2.5 border border-slate-200 dark:border-slate-700 shadow-md mb-4 flex items-center justify-center">
+          <img
+            src="/logo.png"
+            alt="لوگوی نظام صنفی رایانه‌ای"
+            class="w-full h-full object-contain"
+          />
         </div>
 
-        <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+        <h1 class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
           ورود به پنل مدیریت نصر پلاس
         </h1>
-        <p class="mt-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          سامانه اعضای سازمان نظام صنفی رایانه‌ای کشور
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          سامانه اختصاصی مدیران و کارشناسان دبیرخانه
         </p>
       </div>
 
@@ -157,8 +149,24 @@ async function handleLogin() {
         </div>
       </form>
 
+      <!-- Link to Public Registration Landing -->
+      <div class="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
+        <div class="p-3.5 rounded-2xl bg-brand-50/70 dark:bg-brand-950/40 border border-brand-200/70 dark:border-brand-800/50 text-center">
+          <p class="text-xs text-brand-900 dark:text-brand-300 font-bold mb-1.5">
+            متقاضی عضویت در نظام صنفی هستید؟
+          </p>
+          <router-link
+            to="/register"
+            class="inline-flex items-center gap-1.5 text-xs font-black text-brand-700 dark:text-brand-400 hover:text-brand-800 dark:hover:text-brand-300 underline underline-offset-4 transition-colors"
+          >
+            <span>ورود به لندینگ و فرم ثبت‌نام آنلاین اعضا (حقیقی و حقوقی)</span>
+            <span dir="ltr">&larr;</span>
+          </router-link>
+        </div>
+      </div>
+
       <!-- Footer notice -->
-      <div class="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 text-center text-xs text-slate-400 dark:text-slate-500">
+      <div class="mt-4 text-center text-3xs text-slate-400 dark:text-slate-500">
         سامانه جامع مدیریت اعضای سازمان نظام صنفی رایانه‌ای کشور
       </div>
     </div>
