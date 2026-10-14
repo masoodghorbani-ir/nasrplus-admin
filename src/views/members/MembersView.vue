@@ -9,6 +9,7 @@ import {
   Search,
   FilterX,
   Download,
+  FileSpreadsheet,
   Eye,
   Edit,
   Trash2,
@@ -35,6 +36,7 @@ import {
 import { extractErrorMessage } from '@/utils/errors';
 import MemberFormModal from './MemberFormModal.vue';
 import MemberDetailDrawer from './MemberDetailDrawer.vue';
+import MemberImportModal from './MemberImportModal.vue';
 
 const route = useRoute();
 const lookupsStore = useLookupsStore();
@@ -61,11 +63,17 @@ const dateTo = ref('');
 const isFormModalOpen = ref(false);
 const editingMember = ref<Member | null>(null);
 
+const isImportModalOpen = ref(false);
+
 const isDetailDrawerOpen = ref(false);
 const viewingMemberId = ref<string | null>(null);
 
 const memberToDelete = ref<Member | null>(null);
 const isDeleting = ref(false);
+
+function handleImportSuccess() {
+  loadMembers();
+}
 
 async function loadMembers() {
   isLoading.value = true;
@@ -249,6 +257,11 @@ onMounted(() => {
   if (route.query.viewId) {
     openDetailDrawer(route.query.viewId as string);
   }
+
+  // If redirected with import query param
+  if (route.query.import === 'true') {
+    isImportModalOpen.value = true;
+  }
 });
 </script>
 
@@ -285,6 +298,16 @@ onMounted(() => {
         >
           <Download class="w-4 h-4 ml-1" />
           خروجی اکسل
+        </Button>
+
+        <Button
+          variant="outline"
+          size="sm"
+          title="ورود دسته‌جمعی اعضا از فایل اکسل"
+          @click="isImportModalOpen = true"
+        >
+          <FileSpreadsheet class="w-4 h-4 ml-1 text-emerald-600 dark:text-emerald-400" />
+          ورود از اکسل
         </Button>
 
         <Button
@@ -572,6 +595,12 @@ onMounted(() => {
       v-model:open="isFormModalOpen"
       :member="editingMember"
       @saved="onMemberSaved"
+    />
+
+    <!-- Member Excel Import Wizard Modal -->
+    <MemberImportModal
+      v-model:open="isImportModalOpen"
+      @imported="handleImportSuccess"
     />
 
     <!-- Member Detail Drawer -->

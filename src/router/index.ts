@@ -44,6 +44,16 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'members/import',
+        name: 'MemberImport',
+        component: () => import('@/views/members/MemberImportView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'ورود اعضا از اکسل',
+          permission: 'members:read',
+        },
+      },
+      {
         path: 'companies',
         name: 'Companies',
         component: () => import('@/views/companies/CompaniesView.vue'),

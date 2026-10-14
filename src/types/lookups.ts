@@ -20,6 +20,7 @@ export interface Rank extends BaseLookup {
 
 export interface NatureOfMembership extends BaseLookup {
   code?: string;
+  key?: 'REAL' | 'LEGAL' | string;
 }
 
 export interface AcademicField extends BaseLookup {}

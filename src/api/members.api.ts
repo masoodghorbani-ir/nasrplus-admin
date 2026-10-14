@@ -9,6 +9,9 @@ import type {
   CreateAddressInput,
   MemberTelephone,
   CreateTelephoneInput,
+  IImportPreviewResponse,
+  IImportConfirmPayload,
+  IImportExecutionResponse,
 } from '@/types';
 
 export const membersApi = {
@@ -93,6 +96,30 @@ export const membersApi = {
   async deleteMemberTelephone(memberId: string, telephoneId: string): Promise<ApiResponse<void>> {
     const response = await apiClient.delete<ApiResponse<void>>(
       `/members/${memberId}/telephones/${telephoneId}`
+    );
+    return response.data;
+  },
+
+  // Bulk Excel Import
+  async previewImport(file: File): Promise<ApiResponse<IImportPreviewResponse>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<ApiResponse<IImportPreviewResponse>>(
+      '/members/import/preview',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  },
+
+  async confirmImport(payload: IImportConfirmPayload): Promise<ApiResponse<IImportExecutionResponse>> {
+    const response = await apiClient.post<ApiResponse<IImportExecutionResponse>>(
+      '/members/import/confirm',
+      payload
     );
     return response.data;
   },
