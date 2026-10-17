@@ -15,7 +15,6 @@ import {
   Award,
   BookOpen,
   GraduationCap,
-  FileCheck2,
   ArrowRight,
   ChevronLeft,
   LayoutGrid,
@@ -47,8 +46,7 @@ export type LookupTab =
   | 'ranks'
   | 'nature-of-memberships'
   | 'academic-fields'
-  | 'degree-levels'
-  | 'academic-qualifications';
+  | 'degree-levels';
 
 interface LookupCategoryDef {
   id: LookupTab;
@@ -107,14 +105,6 @@ const categories: LookupCategoryDef[] = [
     icon: GraduationCap,
     color: 'indigo',
     getCount: () => lookupsStore.degreeLevels.length,
-  },
-  {
-    id: 'academic-qualifications',
-    label: 'مدارک و صلاحیت‌ها',
-    description: 'مدیریت مدارک، صلاحیت‌ها و ارتباط رشته و مقطع تحصیلی',
-    icon: FileCheck2,
-    color: 'rose',
-    getCount: () => lookupsStore.academicQualifications.length,
   },
 ];
 
@@ -183,8 +173,7 @@ const totalLookupsCount = computed(() => {
     lookupsStore.ranks.length +
     lookupsStore.natureOfMemberships.length +
     lookupsStore.academicFields.length +
-    lookupsStore.degreeLevels.length +
-    lookupsStore.academicQualifications.length
+    lookupsStore.degreeLevels.length
   );
 });
 
@@ -204,10 +193,6 @@ const formTitle = ref('');
 const formCode = ref('');
 const formDescription = ref('');
 const formLevel = ref<number | undefined>(undefined);
-const formAcademicField = ref('');
-const formDegreeLevel = ref('');
-const formInstitution = ref('');
-const formGradYear = ref<number | undefined>(undefined);
 
 // Delete state
 const itemToDelete = ref<{ id: string; title: string } | null>(null);
@@ -241,9 +226,6 @@ const currentItems = computed(() => {
     case 'degree-levels':
       list = lookupsStore.degreeLevels;
       break;
-    case 'academic-qualifications':
-      list = lookupsStore.academicQualifications;
-      break;
   }
 
   const q = normalizeText(tableSearchQuery.value);
@@ -265,10 +247,6 @@ function openCreateModal() {
   formCode.value = '';
   formDescription.value = '';
   formLevel.value = undefined;
-  formAcademicField.value = lookupsStore.academicFields[0]?._id || '';
-  formDegreeLevel.value = lookupsStore.degreeLevels[0]?._id || '';
-  formInstitution.value = '';
-  formGradYear.value = 1400;
   isFormModalOpen.value = true;
 }
 
@@ -278,10 +256,6 @@ function openEditModal(item: any) {
   formCode.value = item.code || '';
   formDescription.value = item.description || '';
   formLevel.value = item.level;
-  formAcademicField.value = typeof item.academicField === 'object' ? item.academicField?._id : item.academicField || '';
-  formDegreeLevel.value = typeof item.degreeLevel === 'object' ? item.degreeLevel?._id : item.degreeLevel || '';
-  formInstitution.value = item.institution || '';
-  formGradYear.value = item.graduationYear;
   isFormModalOpen.value = true;
 }
 
@@ -370,21 +344,6 @@ async function handleSaveItem() {
         }
         break;
       }
-      case 'academic-qualifications': {
-        const payload = {
-          title: formTitle.value.trim(),
-          academicField: formAcademicField.value,
-          degreeLevel: formDegreeLevel.value,
-          institution: formInstitution.value.trim() || undefined,
-          graduationYear: formGradYear.value ? Number(formGradYear.value) : undefined,
-        };
-        if (isEdit && id) {
-          await lookupsApi.updateAcademicQualification(id, payload);
-        } else {
-          await lookupsApi.createAcademicQualification(payload);
-        }
-        break;
-      }
     }
 
     notificationStore.success('عملیات با موفقیت انجام شد.');
@@ -421,9 +380,6 @@ async function handleDeleteItem() {
         break;
       case 'degree-levels':
         await lookupsApi.deleteDegreeLevel(id);
-        break;
-      case 'academic-qualifications':
-        await lookupsApi.deleteAcademicQualification(id);
         break;
     }
 
@@ -675,7 +631,6 @@ onMounted(() => {
                 <th class="py-3.5 px-4">عنوان</th>
                 <th v-if="selectedLookup !== 'academic-fields' && selectedLookup !== 'ranks'" class="py-3.5 px-4">کد / شناسه</th>
                 <th v-if="selectedLookup === 'ranks'" class="py-3.5 px-4">سطح رتبه (Level)</th>
-                <th v-if="selectedLookup === 'academic-qualifications'" class="py-3.5 px-4">رشته و مقطع</th>
                 <th class="py-3.5 px-4">توضیحات</th>
                 <th class="py-3.5 px-4 text-left">عملیات</th>
               </tr>
@@ -737,19 +692,9 @@ onMounted(() => {
                   </Badge>
                 </td>
 
-                <!-- Academic Qualifications Relations -->
-                <td v-if="selectedLookup === 'academic-qualifications'" class="py-3.5 px-4 text-slate-600 dark:text-slate-400">
-                  <div class="space-y-0.5">
-                    <span>{{ typeof item.academicField === 'object' ? item.academicField?.title : item.academicField }}</span>
-                    <span class="text-slate-400 block text-[10px]">
-                      مقطع: {{ typeof item.degreeLevel === 'object' ? item.degreeLevel?.title : item.degreeLevel }}
-                    </span>
-                  </div>
-                </td>
-
                 <!-- Description -->
                 <td class="py-3.5 px-4 text-slate-500 dark:text-slate-400 max-w-xs truncate">
-                  {{ item.description || item.institution || '—' }}
+                  {{ item.description || '—' }}
                 </td>
 
                 <!-- Actions -->
@@ -808,36 +753,6 @@ onMounted(() => {
           placeholder="مثال: 1, 2, 3"
           dir="ltr"
         />
-
-        <div v-if="selectedLookup === 'academic-qualifications'" class="space-y-4">
-          <Select
-            v-model="formAcademicField"
-            label="رشته تحصیلی مرتبط"
-            :options="lookupsStore.academicFields.map(f => ({ label: f.title, value: f._id }))"
-            required
-          />
-
-          <Select
-            v-model="formDegreeLevel"
-            label="مقطع تحصیلی"
-            :options="lookupsStore.degreeLevels.map(d => ({ label: d.title, value: d._id }))"
-            required
-          />
-
-          <Input
-            v-model="formInstitution"
-            label="دانشگاه / موسسه آموزشی"
-            placeholder="مثال: دانشگاه تهران"
-          />
-
-          <Input
-            v-model="formGradYear"
-            type="number"
-            label="سال فارغ‌التحصیلی"
-            placeholder="1400"
-            dir="ltr"
-          />
-        </div>
 
         <Input
           v-if="['membership-types', 'degree-levels'].includes(selectedLookup || '')"
