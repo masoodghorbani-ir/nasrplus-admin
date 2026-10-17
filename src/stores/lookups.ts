@@ -9,6 +9,9 @@ import type {
   AcademicField,
   DegreeLevel,
   AcademicQualification,
+  AddressType,
+  Province,
+  City,
 } from '@/types';
 
 export const useLookupsStore = defineStore('lookups', () => {
@@ -19,6 +22,9 @@ export const useLookupsStore = defineStore('lookups', () => {
   const academicFields = ref<AcademicField[]>([]);
   const degreeLevels = ref<DegreeLevel[]>([]);
   const academicQualifications = ref<AcademicQualification[]>([]);
+  const addressTypes = ref<AddressType[]>([]);
+  const provinces = ref<Province[]>([]);
+  const cities = ref<City[]>([]);
 
   const isLoading = ref(false);
   const isLoaded = ref(false);
@@ -36,6 +42,9 @@ export const useLookupsStore = defineStore('lookups', () => {
         fieldsRes,
         degreeRes,
         qualRes,
+        addrTypesRes,
+        provincesRes,
+        citiesRes,
       ] = await Promise.allSettled([
         lookupsApi.getMembershipTypes(),
         lookupsApi.getSpecializations(),
@@ -44,6 +53,9 @@ export const useLookupsStore = defineStore('lookups', () => {
         lookupsApi.getAcademicFields(),
         lookupsApi.getDegreeLevels(),
         lookupsApi.getAcademicQualifications(),
+        lookupsApi.getAddressTypes(),
+        lookupsApi.getProvinces(),
+        lookupsApi.getCities(),
       ]);
 
       if (mTypesRes.status === 'fulfilled' && mTypesRes.value.success) {
@@ -67,11 +79,50 @@ export const useLookupsStore = defineStore('lookups', () => {
       if (qualRes.status === 'fulfilled' && qualRes.value.success) {
         academicQualifications.value = qualRes.value.data || [];
       }
+      if (addrTypesRes.status === 'fulfilled' && addrTypesRes.value.success) {
+        addressTypes.value = addrTypesRes.value.data || [];
+      }
+      if (provincesRes.status === 'fulfilled' && provincesRes.value.success) {
+        provinces.value = provincesRes.value.data || [];
+      }
+      if (citiesRes.status === 'fulfilled' && citiesRes.value.success) {
+        cities.value = citiesRes.value.data || [];
+      }
 
       isLoaded.value = true;
     } finally {
       isLoading.value = false;
     }
+  }
+
+  async function fetchCities(provinceId?: string): Promise<City[]> {
+    try {
+      const res = await lookupsApi.getCities(provinceId);
+      if (res.success && res.data) {
+        if (!provinceId) {
+          cities.value = res.data;
+        } else {
+          // Merge or replace
+          const existingOther = cities.value.filter((c) => {
+            const pId = typeof c.provinceId === 'object' ? c.provinceId?._id : c.provinceId;
+            return pId !== provinceId;
+          });
+          cities.value = [...existingOther, ...res.data];
+        }
+        return res.data;
+      }
+    } catch {
+      // Fallback
+    }
+    return [];
+  }
+
+  function getCitiesByProvinceId(provinceId: string): City[] {
+    if (!provinceId) return cities.value;
+    return cities.value.filter((c) => {
+      const pId = typeof c.provinceId === 'object' ? c.provinceId?._id : c.provinceId;
+      return pId === provinceId;
+    });
   }
 
   // Lookup title helpers
@@ -103,6 +154,41 @@ export const useLookupsStore = defineStore('lookups', () => {
     return item?.title || '—';
   }
 
+  function getAddressTypeTitle(idOrObj: string | AddressType | undefined | null): string {
+    if (!idOrObj) return '—';
+    if (typeof idOrObj === 'object' && idOrObj.title) return idOrObj.title;
+    const item = addressTypes.value.find((x) => x._id === idOrObj);
+    return item?.title || String(idOrObj);
+  }
+
+  function getProvinceTitle(idOrObj: string | Province | undefined | null): string {
+    if (!idOrObj) return '—';
+    if (typeof idOrObj === 'object') return idOrObj.title || idOrObj.name || '—';
+    const item = provinces.value.find((x) => x._id === idOrObj);
+    return item?.title || item?.name || String(idOrObj);
+  }
+
+  function getCityTitle(idOrObj: string | City | undefined | null): string {
+    if (!idOrObj) return '—';
+    if (typeof idOrObj === 'object') return idOrObj.title || idOrObj.name || '—';
+    const item = cities.value.find((x) => x._id === idOrObj);
+    return item?.title || item?.name || String(idOrObj);
+  }
+
+  function getAcademicFieldTitle(idOrObj: string | AcademicField | undefined | null): string {
+    if (!idOrObj) return '—';
+    if (typeof idOrObj === 'object' && idOrObj.title) return idOrObj.title;
+    const item = academicFields.value.find((x) => x._id === idOrObj);
+    return item?.title || '—';
+  }
+
+  function getDegreeLevelTitle(idOrObj: string | DegreeLevel | undefined | null): string {
+    if (!idOrObj) return '—';
+    if (typeof idOrObj === 'object' && idOrObj.title) return idOrObj.title;
+    const item = degreeLevels.value.find((x) => x._id === idOrObj);
+    return item?.title || '—';
+  }
+
   return {
     membershipTypes,
     specializations,
@@ -111,12 +197,22 @@ export const useLookupsStore = defineStore('lookups', () => {
     academicFields,
     degreeLevels,
     academicQualifications,
+    addressTypes,
+    provinces,
+    cities,
     isLoading,
     isLoaded,
     fetchAllLookups,
+    fetchCities,
+    getCitiesByProvinceId,
     getMembershipTypeTitle,
     getSpecializationTitle,
     getRankTitle,
     getNatureTitle,
+    getAddressTypeTitle,
+    getProvinceTitle,
+    getCityTitle,
+    getAcademicFieldTitle,
+    getDegreeLevelTitle,
   };
 });

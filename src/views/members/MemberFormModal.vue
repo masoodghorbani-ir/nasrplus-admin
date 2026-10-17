@@ -47,6 +47,34 @@ const membershipDate = ref('');
 const expiryDate = ref('');
 const notes = ref('');
 
+// Initial contact fields (optional on create)
+const initialPhoneNumber = ref('');
+const initialProvince = ref('');
+const initialCity = ref('');
+const initialAddress = ref('');
+const initialPostalCode = ref('');
+
+const initialCities = computed(() => {
+  if (!initialProvince.value) return lookupsStore.cities;
+  return lookupsStore.getCitiesByProvinceId(initialProvince.value);
+});
+
+watch(initialProvince, (newProvId) => {
+  if (!newProvId) {
+    initialCity.value = '';
+    return;
+  }
+  const citiesInProv = lookupsStore.getCitiesByProvinceId(newProvId);
+  if (initialCity.value) {
+    const exists = citiesInProv.some((c) => c._id === initialCity.value);
+    if (!exists) {
+      initialCity.value = citiesInProv[0]?._id || '';
+    }
+  } else if (citiesInProv.length > 0) {
+    initialCity.value = citiesInProv[0]._id;
+  }
+});
+
 const errors = ref<Record<string, string>>({});
 
 const isEdit = computed(() => Boolean(props.member));
@@ -123,6 +151,11 @@ watch(
         membershipDate.value = '';
         expiryDate.value = '';
         notes.value = '';
+        initialPhoneNumber.value = '';
+        initialProvince.value = '';
+        initialCity.value = '';
+        initialAddress.value = '';
+        initialPostalCode.value = '';
       }
     }
   }
@@ -205,6 +238,40 @@ async function handleSubmit() {
 
       const res = await membersApi.createMember(createPayload);
       if (res.success) {
+        const newMemberId = res.data._id;
+
+        // Auto-register initial telephone if provided
+        if (initialPhoneNumber.value.trim()) {
+          try {
+            await membersApi.addMemberTelephone(newMemberId, {
+              phoneNumber: initialPhoneNumber.value.trim(),
+              phoneType: 'MOBILE',
+              isPrimary: true,
+            });
+          } catch {
+            // Non-blocking for sub-resource
+          }
+        }
+
+        // Auto-register initial address if provided
+        if (initialAddress.value.trim() && initialProvince.value && initialCity.value) {
+          try {
+            const addrType = lookupsStore.addressTypes[0]?._id;
+            if (addrType) {
+              await membersApi.addMemberAddress(newMemberId, {
+                addressType: addrType,
+                province: initialProvince.value,
+                city: initialCity.value,
+                address: initialAddress.value.trim(),
+                postalCode: initialPostalCode.value.trim() || undefined,
+                isPrimary: true,
+              });
+            }
+          } catch {
+            // Non-blocking for sub-resource
+          }
+        }
+
         notificationStore.success('عضو جدید با موفقیت در سامانه نصر پلاس ثبت شد.');
         emit('saved', res.data);
         emit('update:open', false);
@@ -376,6 +443,55 @@ async function handleSubmit() {
             v-model="notes"
             label="یادداشت و توضیحات پرونده"
             placeholder="توضیحات تکمیلی یا سوابق..."
+          />
+        </div>
+      </div>
+
+      <!-- Section 3: Initial Contact & Address Info (Optional for Create) -->
+      <div v-if="!isEdit" class="space-y-4 pt-1">
+        <h4 class="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider pb-1 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <span>۳. اطلاعات تماس و نشانی پستی اولیه (اختیاری)</span>
+          <span class="text-[11px] text-slate-400 font-normal">امکان ویرایش و تکمیل در منوی پرونده وجود دارد</span>
+        </h4>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Input
+            v-model="initialPhoneNumber"
+            label="شماره تلفن همراه"
+            placeholder="09121234567"
+            dir="ltr"
+          />
+
+          <Select
+            v-model="initialProvince"
+            label="استان"
+            placeholder="انتخاب استان..."
+            :options="lookupsStore.provinces.map(p => ({ label: p.title || p.name || '', value: p._id }))"
+          />
+
+          <Select
+            v-model="initialCity"
+            label="شهر"
+            placeholder="انتخاب شهر..."
+            :options="initialCities.map(c => ({ label: c.title || c.name || '', value: c._id }))"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="sm:col-span-2">
+            <Input
+              v-model="initialAddress"
+              label="نشانی پستی"
+              placeholder="خیابان، پلاک، واحد..."
+            />
+          </div>
+
+          <Input
+            v-model="initialPostalCode"
+            label="کد پستی (۱۰ رقم)"
+            placeholder="1417755331"
+            dir="ltr"
+            maxlength="10"
           />
         </div>
       </div>

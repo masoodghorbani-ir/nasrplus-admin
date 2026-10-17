@@ -30,25 +30,33 @@ export interface DegreeLevel extends BaseLookup {
 }
 
 export interface AcademicQualification extends BaseLookup {
+  memberId?: string;
   academicField?: string | AcademicField;
   degreeLevel?: string | DegreeLevel;
   institution?: string;
+  city?: string;
+  startYear?: number;
   graduationYear?: number;
+  gpa?: number | string;
+  description?: string;
+  isLatest?: boolean;
 }
 
-export interface AddressType {
-  _id: string;
-  title: string;
-}
-
-export interface Province {
-  _id: string;
-  name: string;
+export interface AddressType extends BaseLookup {
   code?: string;
+  description?: string;
+  isActive?: boolean;
 }
 
-export interface City {
-  _id: string;
-  name: string;
-  provinceId?: string;
+export interface Province extends BaseLookup {
+  name?: string;
+  code?: string;
+  isActive?: boolean;
+}
+
+export interface City extends BaseLookup {
+  name?: string;
+  provinceId?: string | Province;
+  code?: string;
+  isActive?: boolean;
 }

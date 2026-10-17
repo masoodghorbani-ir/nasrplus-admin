@@ -8,7 +8,7 @@ import type { IImportExecutionResponse } from '@/types';
 const router = useRouter();
 
 function handleBack() {
-  router.push('/members');
+  router.push('/admin/members');
 }
 
 function handleImported(_result: IImportExecutionResponse) {
@@ -22,11 +22,11 @@ function handleImported(_result: IImportExecutionResponse) {
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
       <div>
         <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-1">
-          <router-link to="/dashboard" class="hover:text-brand-600 transition-colors">
+          <router-link to="/admin/dashboard" class="hover:text-brand-600 transition-colors">
             داشبورد
           </router-link>
           <span>/</span>
-          <router-link to="/members" class="hover:text-brand-600 transition-colors">
+          <router-link to="/admin/members" class="hover:text-brand-600 transition-colors">
             مدیریت اعضا
           </router-link>
           <span>/</span>

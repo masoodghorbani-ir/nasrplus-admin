@@ -35,7 +35,10 @@ apiClient.interceptors.response.use(
       // Avoid looping if we are already attempting to login or on public landing/register pages
       const currentPath = window.location.pathname;
       const isPublicRoute =
+        currentPath === '/' ||
         currentPath === '/login' ||
+        currentPath === '/admin/login' ||
+        currentPath.startsWith('/profile') ||
         currentPath.startsWith('/register') ||
         currentPath.startsWith('/landing') ||
         currentPath.startsWith('/portal') ||
@@ -44,7 +47,7 @@ apiClient.interceptors.response.use(
       if (!isPublicRoute) {
         localStorage.removeItem('nasrplus_token');
         localStorage.removeItem('nasrplus_user');
-        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+        window.location.href = `/admin/login?redirect=${encodeURIComponent(currentPath)}`;
       }
     }
     return Promise.reject(error);

@@ -8,6 +8,9 @@ import type {
   AcademicField,
   DegreeLevel,
   AcademicQualification,
+  AddressType,
+  Province,
+  City,
 } from '@/types';
 
 export const lookupsApi = {
@@ -124,12 +127,22 @@ export const lookupsApi = {
     const res = await apiClient.get<ApiResponse<AcademicQualification[]>>('/lookups/academic-qualifications');
     return res.data;
   },
+  async getAcademicQualificationById(id: string): Promise<ApiResponse<AcademicQualification>> {
+    const res = await apiClient.get<ApiResponse<AcademicQualification>>(`/lookups/academic-qualifications/${id}`);
+    return res.data;
+  },
   async createAcademicQualification(data: {
     title: string;
     academicField: string;
     degreeLevel: string;
+    memberId?: string;
     institution?: string;
+    city?: string;
+    startYear?: number;
     graduationYear?: number;
+    gpa?: number | string;
+    description?: string;
+    isLatest?: boolean;
   }): Promise<ApiResponse<AcademicQualification>> {
     const res = await apiClient.post<ApiResponse<AcademicQualification>>('/lookups/academic-qualifications', data);
     return res.data;
@@ -143,6 +156,62 @@ export const lookupsApi = {
   },
   async deleteAcademicQualification(id: string): Promise<ApiResponse<void>> {
     const res = await apiClient.delete<ApiResponse<void>>(`/lookups/academic-qualifications/${id}`);
+    return res.data;
+  },
+
+  // Address Types
+  async getAddressTypes(): Promise<ApiResponse<AddressType[]>> {
+    const res = await apiClient.get<ApiResponse<AddressType[]>>('/lookups/address-types');
+    return res.data;
+  },
+  async createAddressType(data: { title: string; code?: string; description?: string }): Promise<ApiResponse<AddressType>> {
+    const res = await apiClient.post<ApiResponse<AddressType>>('/lookups/address-types', data);
+    return res.data;
+  },
+  async updateAddressType(id: string, data: Partial<AddressType>): Promise<ApiResponse<AddressType>> {
+    const res = await apiClient.put<ApiResponse<AddressType>>(`/lookups/address-types/${id}`, data);
+    return res.data;
+  },
+  async deleteAddressType(id: string): Promise<ApiResponse<void>> {
+    const res = await apiClient.delete<ApiResponse<void>>(`/lookups/address-types/${id}`);
+    return res.data;
+  },
+
+  // Provinces
+  async getProvinces(): Promise<ApiResponse<Province[]>> {
+    const res = await apiClient.get<ApiResponse<Province[]>>('/lookups/provinces');
+    return res.data;
+  },
+  async createProvince(data: { title: string; code?: string }): Promise<ApiResponse<Province>> {
+    const res = await apiClient.post<ApiResponse<Province>>('/lookups/provinces', data);
+    return res.data;
+  },
+  async updateProvince(id: string, data: Partial<Province>): Promise<ApiResponse<Province>> {
+    const res = await apiClient.put<ApiResponse<Province>>(`/lookups/provinces/${id}`, data);
+    return res.data;
+  },
+  async deleteProvince(id: string): Promise<ApiResponse<void>> {
+    const res = await apiClient.delete<ApiResponse<void>>(`/lookups/provinces/${id}`);
+    return res.data;
+  },
+
+  // Cities
+  async getCities(provinceId?: string): Promise<ApiResponse<City[]>> {
+    const res = await apiClient.get<ApiResponse<City[]>>('/lookups/cities', {
+      params: provinceId ? { provinceId } : undefined,
+    });
+    return res.data;
+  },
+  async createCity(data: { title: string; provinceId: string; code?: string }): Promise<ApiResponse<City>> {
+    const res = await apiClient.post<ApiResponse<City>>('/lookups/cities', data);
+    return res.data;
+  },
+  async updateCity(id: string, data: Partial<City>): Promise<ApiResponse<City>> {
+    const res = await apiClient.put<ApiResponse<City>>(`/lookups/cities/${id}`, data);
+    return res.data;
+  },
+  async deleteCity(id: string): Promise<ApiResponse<void>> {
+    const res = await apiClient.delete<ApiResponse<void>>(`/lookups/cities/${id}`);
     return res.data;
   },
 };

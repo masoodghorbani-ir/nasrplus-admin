@@ -43,6 +43,8 @@ export interface CreateTelephoneInput {
   isPrimary?: boolean;
 }
 
+export type UpdateTelephoneInput = Partial<CreateTelephoneInput>;
+
 export interface MemberAddress {
   _id: string;
   membershipId?: string;
@@ -53,6 +55,8 @@ export interface MemberAddress {
   address: string;
   plaque?: string;
   isPrimary?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreateAddressInput {
@@ -64,6 +68,8 @@ export interface CreateAddressInput {
   plaque?: string;
   isPrimary?: boolean;
 }
+
+export type UpdateAddressInput = Partial<CreateAddressInput>;
 
 export interface Member {
   _id: string;
@@ -79,6 +85,7 @@ export interface Member {
   specializationId: string | Specialization;
   rankId?: string | Rank;
   latestAcademicQualifications?: string | AcademicQualification;
+  academicQualifications?: AcademicQualification[];
   natureOfMembership: string | NatureOfMembership;
   companyInformation?: string | Company;
   membershipDate?: string;

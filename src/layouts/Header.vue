@@ -57,7 +57,7 @@ function promptLogout() {
 function handleLogout() {
   authStore.logout();
   notificationStore.info('شما با موفقیت از سامانه خارج شدید.');
-  router.push('/login');
+  router.push('/admin/login');
 }
 </script>
 

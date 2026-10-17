@@ -220,7 +220,7 @@ const doughnutChartOptions = computed(() => ({
         <Button
           variant="outline"
           size="sm"
-          @click="router.push('/companies')"
+          @click="router.push('/admin/companies')"
         >
           <Building2 class="w-4 h-4 ml-1.5" />
           ثبت شرکت جدید
@@ -229,7 +229,7 @@ const doughnutChartOptions = computed(() => ({
         <Button
           variant="primary"
           size="sm"
-          @click="router.push('/members')"
+          @click="router.push('/admin/members')"
         >
           <PlusCircle class="w-4 h-4 ml-1.5" />
           ثبت عضو جدید
@@ -364,7 +364,7 @@ const doughnutChartOptions = computed(() => ({
           <Button
             variant="ghost"
             size="sm"
-            @click="router.push('/members')"
+            @click="router.push('/admin/members')"
           >
             مشاهده همه اعضا
             <ArrowUpRight class="w-4 h-4 mr-1" />
@@ -437,7 +437,7 @@ const doughnutChartOptions = computed(() => ({
                   <TableActions
                     primary-label="مشاهده پرونده"
                     :primary-icon="Eye"
-                    @primary="router.push(`/members?viewId=${member._id}`)"
+                    @primary="router.push(`/admin/members?viewId=${member._id}`)"
                   />
                 </td>
               </tr>

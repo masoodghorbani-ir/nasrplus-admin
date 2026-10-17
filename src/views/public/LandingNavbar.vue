@@ -16,7 +16,11 @@ const router = useRouter();
 const themeStore = useThemeStore();
 
 function goToLogin() {
-  router.push('/login');
+  router.push('/admin');
+}
+
+function goToHome() {
+  router.push('/');
 }
 </script>
 
@@ -27,7 +31,7 @@ function goToLogin() {
   >
     <div class="max-w-6xl mx-auto px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-2">
       <!-- Logo & Title -->
-      <div class="flex items-center gap-2.5 sm:gap-3 shrink-0">
+      <div class="flex items-center gap-2.5 sm:gap-3 shrink-0 cursor-pointer" @click="goToHome">
         <!-- Logo Emblem -->
         <div class="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 p-1 sm:p-1.5 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-center shrink-0">
           <img

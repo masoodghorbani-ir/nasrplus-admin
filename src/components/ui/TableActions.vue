@@ -57,7 +57,7 @@ const primaryVariantClasses = computed(() => {
 function updateCoords() {
   if (!triggerRef.value) return;
   const rect = triggerRef.value.getBoundingClientRect();
-  const menuWidth = 160;
+  const menuWidth = 195;
   const approxItemHeight = 36;
   const menuHeight = (props.items.length || 2) * approxItemHeight + 16;
   const spaceBelow = window.innerHeight - rect.bottom;
@@ -199,7 +199,7 @@ onUnmounted(() => {
           <div
             v-if="isOpen"
             ref="menuRef"
-            class="fixed z-50 min-w-40 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1 text-xs text-right overflow-hidden select-none"
+            class="fixed z-50 min-w-48 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1 text-xs text-right overflow-hidden select-none"
             :style="{ top: `${coords.top}px`, left: `${coords.left}px` }"
             dir="rtl"
             role="menu"

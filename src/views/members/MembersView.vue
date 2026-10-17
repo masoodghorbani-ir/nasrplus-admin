@@ -16,6 +16,9 @@ import {
   Users,
   RefreshCw,
   Calendar,
+  MapPin,
+  Phone,
+  GraduationCap,
 } from 'lucide-vue-next';
 import {
   Button,
@@ -34,9 +37,12 @@ import {
   statusConfig,
 } from '@/utils/formatters';
 import { extractErrorMessage } from '@/utils/errors';
+import { getMemberLatestDegreeTitle } from '@/utils/qualifications';
 import MemberFormModal from './MemberFormModal.vue';
 import MemberDetailDrawer from './MemberDetailDrawer.vue';
 import MemberImportModal from './MemberImportModal.vue';
+import MemberContactsModal from './MemberContactsModal.vue';
+import MemberQualificationsModal from './MemberQualificationsModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -87,6 +93,28 @@ const isImportModalOpen = ref(false);
 
 const isDetailDrawerOpen = ref(false);
 const viewingMemberId = ref<string | null>(null);
+
+const isContactsModalOpen = ref(false);
+const managingContactsMember = ref<Member | null>(null);
+const contactsModalInitialTab = ref<'addresses' | 'telephones'>('addresses');
+
+function openContactsModal(member: Member, tab: 'addresses' | 'telephones' = 'addresses') {
+  managingContactsMember.value = member;
+  contactsModalInitialTab.value = tab;
+  isContactsModalOpen.value = true;
+}
+
+const isQualificationsModalOpen = ref(false);
+const managingQualificationsMember = ref<Member | null>(null);
+
+function openQualificationsModal(member: Member) {
+  managingQualificationsMember.value = member;
+  isQualificationsModalOpen.value = true;
+}
+
+function getMemberLatestDegree(member: Member): string {
+  return getMemberLatestDegreeTitle(member, lookupsStore);
+}
 
 const memberToDelete = ref<Member | null>(null);
 const isDeleting = ref(false);
@@ -518,6 +546,7 @@ onMounted(async () => {
               <th class="py-3.5 px-4">نوع عضویت</th>
               <th class="py-3.5 px-4">رسته تخصصی</th>
               <th class="py-3.5 px-4">رتبه صنفی</th>
+              <th class="py-3.5 px-4">درجه تحصیلی</th>
               <th class="py-3.5 px-4">وضعیت</th>
               <th class="py-3.5 px-4 text-left">عملیات</th>
             </tr>
@@ -527,7 +556,7 @@ onMounted(async () => {
             <!-- Loading Skeleton -->
             <template v-if="isLoading">
               <tr v-for="i in 5" :key="i">
-                <td colspan="9" class="py-4 px-4">
+                <td colspan="10" class="py-4 px-4">
                   <Skeleton height="h-7" />
                 </td>
               </tr>
@@ -536,7 +565,7 @@ onMounted(async () => {
             <!-- Empty State -->
             <template v-else-if="displayedMembers.length === 0">
               <tr>
-                <td colspan="9">
+                <td colspan="10">
                   <EmptyState
                     title="هیچ عضوی یافت نشد"
                     description="پرونده‌ای با فیلترهای انتخابی پیدا نشد. می‌توانید فیلترها را تغییر دهید یا عضو جدیدی ثبت کنید."
@@ -606,6 +635,17 @@ onMounted(async () => {
                 {{ lookupsStore.getRankTitle(member.rankId) }}
               </td>
 
+              <!-- Academic Degree Level (Latest) -->
+              <td class="py-3.5 px-4 whitespace-nowrap">
+                <Badge
+                  v-if="getMemberLatestDegree(member)"
+                  variant="purple"
+                >
+                  {{ getMemberLatestDegree(member) }}
+                </Badge>
+                <span v-else class="text-slate-400 font-bold tabular-nums">—</span>
+              </td>
+
               <!-- Status Badge -->
               <td class="py-3.5 px-4">
                 <span
@@ -633,6 +673,21 @@ onMounted(async () => {
                       label: 'ویرایش مشخصات',
                       icon: Edit,
                       onClick: () => openEditModal(member),
+                    },
+                    {
+                      label: 'مدارک دانشگاهی',
+                      icon: GraduationCap,
+                      onClick: () => openQualificationsModal(member),
+                    },
+                    {
+                      label: 'نشانی‌ها و آدرس‌ها',
+                      icon: MapPin,
+                      onClick: () => openContactsModal(member, 'addresses'),
+                    },
+                    {
+                      label: 'شماره‌های تماس',
+                      icon: Phone,
+                      onClick: () => openContactsModal(member, 'telephones'),
                     },
                     {
                       label: 'حذف پرونده',
@@ -677,6 +732,22 @@ onMounted(async () => {
       v-model:open="isDetailDrawerOpen"
       :member-id="viewingMemberId"
       @edit="openEditModal"
+      @updated="loadMembers"
+    />
+
+    <!-- Member Contacts & Addresses Modal -->
+    <MemberContactsModal
+      v-model:open="isContactsModalOpen"
+      :member="managingContactsMember"
+      :initial-tab="contactsModalInitialTab"
+      @updated="loadMembers"
+    />
+
+    <!-- Member Academic Qualifications Modal -->
+    <MemberQualificationsModal
+      v-model:open="isQualificationsModalOpen"
+      :member="managingQualificationsMember"
+      @updated="loadMembers"
     />
 
     <!-- Delete Confirmation Dialog -->

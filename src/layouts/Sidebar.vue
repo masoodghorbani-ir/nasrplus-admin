@@ -30,12 +30,12 @@ const authStore = useAuthStore();
 const themeStore = useThemeStore();
 const lookupsStore = useLookupsStore();
 
-const isMembersSubmenuOpen = ref(route.path.startsWith('/members'));
+const isMembersSubmenuOpen = ref(route.path.startsWith('/admin/members') || route.path.startsWith('/members'));
 
 watch(
   () => route.path,
   (newPath) => {
-    if (newPath.startsWith('/members')) {
+    if (newPath.startsWith('/admin/members') || newPath.startsWith('/members')) {
       isMembersSubmenuOpen.value = true;
     }
   }
@@ -49,34 +49,34 @@ const navItems: NavItem[] = [
   {
     name: 'dashboard',
     label: 'داشبورد',
-    path: '/dashboard',
+    path: '/admin/dashboard',
     icon: LayoutDashboard,
   },
   {
     name: 'members',
     label: 'مدیریت اعضا',
-    path: '/members',
+    path: '/admin/members',
     icon: Users,
     permission: 'members:read',
   },
   {
     name: 'companies',
     label: 'مدیریت شرکت‌ها',
-    path: '/companies',
+    path: '/admin/companies',
     icon: Building2,
     permission: 'companies:read',
   },
   {
     name: 'lookups',
     label: 'اطلاعات پایه و تعاریف',
-    path: '/lookups',
+    path: '/admin/lookups',
     icon: Database,
     permission: 'lookups:read',
   },
   {
     name: 'admins',
     label: 'مدیران و دسترسی‌ها',
-    path: '/admins',
+    path: '/admin/admins',
     icon: ShieldCheck,
     permission: 'admins:manage',
   },
@@ -90,26 +90,26 @@ const filteredNavItems = computed(() => {
 });
 
 function isItemActive(path: string): boolean {
-  if (path === '/dashboard') {
-    return route.path === '/dashboard';
+  if (path === '/admin/dashboard') {
+    return route.path === '/admin/dashboard' || route.path === '/admin';
   }
   return route.path.startsWith(path);
 }
 
 const isMembersSectionActive = computed(() => {
-  return route.path.startsWith('/members');
+  return route.path.startsWith('/admin/members') || route.path.startsWith('/members');
 });
 
 const isAllMembersActive = computed(() => {
   return (
-    route.path === '/members' &&
+    (route.path === '/admin/members' || route.path === '/members') &&
     !route.query.membershipTypeId &&
     !route.query.type
   );
 });
 
 function isMembershipTypeActive(id: string, title?: string): boolean {
-  if (route.path !== '/members') return false;
+  if (route.path !== '/admin/members' && route.path !== '/members') return false;
   const current = (route.query.membershipTypeId || route.query.type)
     ? String(route.query.membershipTypeId || route.query.type)
     : '';
@@ -129,7 +129,7 @@ function handleMembersParentClick() {
     navigateToMembers(undefined);
   } else {
     isMembersSubmenuOpen.value = !isMembersSubmenuOpen.value;
-    if (isMembersSubmenuOpen.value && !route.path.startsWith('/members')) {
+    if (isMembersSubmenuOpen.value && !route.path.startsWith('/admin/members')) {
       navigateToMembers(undefined);
     }
   }
@@ -139,19 +139,19 @@ function navigateToMembers(typeId?: string) {
   const currentQueryTypeId = (route.query.membershipTypeId || route.query.type)
     ? String(route.query.membershipTypeId || route.query.type)
     : '';
-  if (route.path === '/members' && (typeId ? currentQueryTypeId === typeId : !currentQueryTypeId)) {
+  if ((route.path === '/admin/members' || route.path === '/members') && (typeId ? currentQueryTypeId === typeId : !currentQueryTypeId)) {
     themeStore.toggleMobileSidebar(false);
     return;
   }
 
   if (typeId) {
     router.push({
-      path: '/members',
+      path: '/admin/members',
       query: { membershipTypeId: typeId },
     });
   } else {
     router.push({
-      path: '/members',
+      path: '/admin/members',
     });
   }
   themeStore.toggleMobileSidebar(false);
@@ -175,7 +175,7 @@ function navigateToMembers(typeId?: string) {
     >
       <div
         class="flex items-center gap-3 cursor-pointer overflow-hidden"
-        @click="navigateTo('/dashboard')"
+        @click="navigateTo('/admin/dashboard')"
       >
         <!-- Logo Emblem -->
         <div class="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 p-1 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700 shadow-xs">

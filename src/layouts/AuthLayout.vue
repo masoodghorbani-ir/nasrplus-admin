@@ -13,7 +13,7 @@ const themeStore = useThemeStore();
   >
     <!-- Top Bar with Theme Toggle -->
     <header class="w-full px-6 py-4 flex items-center justify-between z-10">
-      <router-link to="/register" class="flex items-center gap-3 group">
+      <router-link to="/" class="flex items-center gap-3 group" title="رفتن به درگاه اصلی">
         <div class="h-10 w-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 flex items-center justify-center shadow-xs">
           <img
             src="/logo.png"
@@ -33,10 +33,10 @@ const themeStore = useThemeStore();
 
       <div class="flex items-center gap-3">
         <router-link
-          to="/register"
-          class="text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline hidden sm:inline"
+          to="/"
+          class="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors hidden sm:inline"
         >
-          پورتال و لندینگ ثبت‌نام اعضا &larr;
+          بازگشت به صفحه اصلی &larr;
         </router-link>
 
         <button
