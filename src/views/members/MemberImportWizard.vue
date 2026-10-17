@@ -7,6 +7,7 @@ import type {
   IImportConfirmPayload,
   IImportExecutionResponse,
   IExcelColumnMapping,
+  IImportValidationResponse,
 } from '@/types';
 import {
   Upload,
@@ -23,11 +24,13 @@ import {
   Table as TableIcon,
   Layers,
   ArrowRight,
+  ArrowLeft,
   X,
   Sliders,
   ChevronDown,
   ChevronUp,
   Search,
+  ShieldCheck,
 } from 'lucide-vue-next';
 import { Button, Input, Select, Badge } from '@/components/ui';
 import { toPersianDigits } from '@/utils/formatters';
@@ -49,8 +52,8 @@ const emit = defineEmits<{
 const lookupsStore = useLookupsStore();
 const notificationStore = useNotificationStore();
 
-// Stepper navigation
-type StepNumber = 1 | 2 | 3;
+// Stepper navigation (4 steps)
+type StepNumber = 1 | 2 | 3 | 4;
 const currentStep = ref<StepNumber>(1);
 
 const steps = [
@@ -68,6 +71,12 @@ const steps = [
   },
   {
     step: 3,
+    title: 'پیش‌نمایش و اعتبارسنجی',
+    description: 'بررسی داده‌های صحیح و خطاهای احتمالی',
+    icon: ShieldCheck,
+  },
+  {
+    step: 4,
     title: 'گزارش و نتایج ورود',
     description: 'مشاهده آمار ثبت و بررسی موارد رد شده',
     icon: CheckCircle2,
@@ -89,7 +98,7 @@ const natureOfMembership = ref<string>('');
 const membershipTypeId = ref<string>('');
 const specializationId = ref<string>('');
 const status = ref<'ACTIVE' | 'PENDING'>('ACTIVE');
-const isSubmitting = ref(false);
+const isValidating = ref(false);
 
 const columnMapping = ref<IExcelColumnMapping>({
   memberCode: '',
@@ -104,7 +113,15 @@ const columnMapping = ref<IExcelColumnMapping>({
 
 const mappingErrors = ref<Record<string, string>>({});
 
-// --- STEP 3: Execution & Report State ---
+// --- STEP 3: Preview & Validation State ---
+const validationResult = ref<IImportValidationResponse | null>(null);
+const validationFilter = ref<'ALL' | 'VALID' | 'ERROR'>('ALL');
+const validationSearch = ref('');
+const validationPage = ref(1);
+const validationPageSize = ref(15);
+const isSubmitting = ref(false);
+
+// --- STEP 4: Execution & Report State ---
 const executionResult = ref<IImportExecutionResponse | null>(null);
 const failedRowsSearch = ref('');
 const isCopied = ref(false);
@@ -348,7 +365,7 @@ async function analyzeFile() {
   }
 }
 
-// Step 2: Validate and Confirm Import
+// Step 2: Validate fields
 function validateStep2(): boolean {
   mappingErrors.value = {};
   let isValid = true;
@@ -376,46 +393,130 @@ function validateStep2(): boolean {
   return isValid;
 }
 
-async function confirmAndImport() {
+// Builds the common confirm/validate payload
+function buildPayload(): IImportConfirmPayload | null {
   if (!previewData.value?.fileId) {
     notificationStore.error('شناسه فایل تحلیل‌شده یافت نشد. لطفاً مجدداً فایل را بارگذاری کنید.');
     currentStep.value = 1;
-    return;
+    return null;
   }
 
   if (!validateStep2()) {
     notificationStore.error('لطفاً فیلدهای الزامی مشخص‌شده را تکمیل نمایید.');
-    return;
+    return null;
   }
+
+  return {
+    fileId: previewData.value.fileId,
+    sheetName: selectedSheet.value || undefined,
+    startRow: Number(startRow.value) || 2,
+    fixedData: {
+      natureOfMembership: natureOfMembership.value,
+      membershipTypeId: membershipTypeId.value,
+      specializationId: specializationId.value || undefined,
+      status: status.value,
+    },
+    columnMapping: {
+      memberCode: columnMapping.value.memberCode,
+      ...(columnMapping.value.firstName ? { firstName: columnMapping.value.firstName } : {}),
+      ...(columnMapping.value.lastName ? { lastName: columnMapping.value.lastName } : {}),
+      ...(columnMapping.value.nationalCode ? { nationalCode: columnMapping.value.nationalCode } : {}),
+      ...(columnMapping.value.membershipDate ? { membershipDate: columnMapping.value.membershipDate } : {}),
+      ...(columnMapping.value.expiryDate ? { expiryDate: columnMapping.value.expiryDate } : {}),
+      ...(columnMapping.value.mobilePhone ? { mobilePhone: columnMapping.value.mobilePhone } : {}),
+      ...(columnMapping.value.email ? { email: columnMapping.value.email } : {}),
+    },
+  };
+}
+
+// Step 2 -> Step 3: Validate and preview data
+async function validateAndGoToStep3() {
+  const payload = buildPayload();
+  if (!payload) return;
+
+  isValidating.value = true;
+  try {
+    const res = await membersApi.validateImport(payload);
+    if (res.success && res.data) {
+      validationResult.value = res.data;
+      validationPage.value = 1;
+      validationFilter.value = 'ALL';
+      validationSearch.value = '';
+      currentStep.value = 3;
+
+      if (res.data.summary.errorCount === 0) {
+        notificationStore.success(
+          `تمامی ${toPersianDigits(res.data.summary.validCount)} سطر بدون خطا اعتبارسنجی شدند.`
+        );
+      } else {
+        notificationStore.warning(
+          `اعتبارسنجی انجام شد: ${toPersianDigits(res.data.summary.validCount)} سطر معتبر و ${toPersianDigits(res.data.summary.errorCount)} سطر دارای خطا یافت شدند.`
+        );
+      }
+    } else {
+      notificationStore.error(res.message || 'خطا در اعتبارسنجی داده‌های فایل.');
+    }
+  } catch (err) {
+    notificationStore.error(extractErrorMessage(err, 'خطا در اجرای فرآیند اعتبارسنجی داده‌ها.'));
+  } finally {
+    isValidating.value = false;
+  }
+}
+
+// Step 3 Filtering and Pagination
+const filteredValidationRows = computed(() => {
+  if (!validationResult.value?.rows) return [];
+  let rows = validationResult.value.rows;
+
+  if (validationFilter.value === 'VALID') {
+    rows = rows.filter((r) => r.isValid);
+  } else if (validationFilter.value === 'ERROR') {
+    rows = rows.filter((r) => !r.isValid);
+  }
+
+  const q = validationSearch.value.trim().toLowerCase();
+  if (q) {
+    rows = rows.filter((r) => {
+      return (
+        String(r.rowNumber).includes(q) ||
+        (r.memberCode && r.memberCode.toLowerCase().includes(q)) ||
+        (r.nationalCode && r.nationalCode.toLowerCase().includes(q)) ||
+        (r.fullName && r.fullName.toLowerCase().includes(q)) ||
+        (r.mobilePhone && r.mobilePhone.toLowerCase().includes(q)) ||
+        (r.email && r.email.toLowerCase().includes(q)) ||
+        r.errors.some((e) => e.toLowerCase().includes(q))
+      );
+    });
+  }
+
+  return rows;
+});
+
+const totalValidationPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredValidationRows.value.length / validationPageSize.value));
+});
+
+const paginatedValidationRows = computed(() => {
+  const start = (validationPage.value - 1) * validationPageSize.value;
+  return filteredValidationRows.value.slice(start, start + validationPageSize.value);
+});
+
+function setValidationFilter(filter: 'ALL' | 'VALID' | 'ERROR') {
+  validationFilter.value = filter;
+  validationPage.value = 1;
+}
+
+// Step 3 -> Step 4: Final Confirm and Import
+async function confirmAndImport() {
+  const payload = buildPayload();
+  if (!payload) return;
 
   isSubmitting.value = true;
   try {
-    const payload: IImportConfirmPayload = {
-      fileId: previewData.value.fileId,
-      sheetName: selectedSheet.value || undefined,
-      startRow: Number(startRow.value) || 2,
-      fixedData: {
-        natureOfMembership: natureOfMembership.value,
-        membershipTypeId: membershipTypeId.value,
-        specializationId: specializationId.value || undefined,
-        status: status.value,
-      },
-      columnMapping: {
-        memberCode: columnMapping.value.memberCode,
-        ...(columnMapping.value.firstName ? { firstName: columnMapping.value.firstName } : {}),
-        ...(columnMapping.value.lastName ? { lastName: columnMapping.value.lastName } : {}),
-        ...(columnMapping.value.nationalCode ? { nationalCode: columnMapping.value.nationalCode } : {}),
-        ...(columnMapping.value.membershipDate ? { membershipDate: columnMapping.value.membershipDate } : {}),
-        ...(columnMapping.value.expiryDate ? { expiryDate: columnMapping.value.expiryDate } : {}),
-        ...(columnMapping.value.mobilePhone ? { mobilePhone: columnMapping.value.mobilePhone } : {}),
-        ...(columnMapping.value.email ? { email: columnMapping.value.email } : {}),
-      },
-    };
-
     const res = await membersApi.confirmImport(payload);
     if (res.success && res.data) {
       executionResult.value = res.data;
-      currentStep.value = 3;
+      currentStep.value = 4;
 
       if (res.data.summary.skippedCount === 0) {
         notificationStore.success(
@@ -423,7 +524,7 @@ async function confirmAndImport() {
         );
       } else {
         notificationStore.warning(
-          `عملیات ورود انجام شد: ${toPersianDigits(res.data.summary.importedCount)} عضو ثبت شد، ${toPersianDigits(res.data.summary.skippedCount)} مورد خطا داشت.`
+          `عملیات ورود انجام شد: ${toPersianDigits(res.data.summary.importedCount)} عضو ثبت شد، ${toPersianDigits(res.data.summary.skippedCount)} مورد رد شد.`
         );
       }
 
@@ -438,7 +539,7 @@ async function confirmAndImport() {
   }
 }
 
-// Step 3: Copy and Download features
+// Step 4: Copy and Download features
 const filteredFailedRows = computed(() => {
   if (!executionResult.value?.failedRows) return [];
   const q = failedRowsSearch.value.trim().toLowerCase();
@@ -519,9 +620,13 @@ function restartWizard() {
   selectedFile.value = null;
   fileError.value = '';
   previewData.value = null;
+  validationResult.value = null;
   executionResult.value = null;
   mappingErrors.value = {};
   failedRowsSearch.value = '';
+  validationSearch.value = '';
+  validationFilter.value = 'ALL';
+  validationPage.value = 1;
   showImportedList.value = false;
   currentStep.value = 1;
   if (fileInputRef.value) {
@@ -542,7 +647,7 @@ onMounted(() => {
   <div class="flex flex-col space-y-6 text-right select-none" dir="rtl">
     <!-- Stepper Navigation Bar -->
     <div class="bg-slate-50 dark:bg-slate-900/60 rounded-2xl p-3 sm:p-4 border border-slate-200 dark:border-slate-800">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         <div
           v-for="s in steps"
           :key="s.step"
@@ -557,7 +662,7 @@ onMounted(() => {
         >
           <div
             :class="[
-              'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm transition-colors',
+              'w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs sm:text-sm transition-colors',
               currentStep === s.step
                 ? 'bg-brand-600 text-white shadow-xs'
                 : currentStep > s.step
@@ -565,7 +670,7 @@ onMounted(() => {
                 : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300',
             ]"
           >
-            <Check v-if="currentStep > s.step" class="w-5 h-5" />
+            <Check v-if="currentStep > s.step" class="w-4 h-4 sm:w-5 sm:h-5" />
             <span v-else>{{ toPersianDigits(s.step) }}</span>
           </div>
 
@@ -702,7 +807,7 @@ onMounted(() => {
             عدم تکرار و اعتبارسنجی
           </div>
           <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-            کد عضویت و کد ملی قبل از ذخیره نهایی بررسی شده و در صورت تکراری بودن در گام سوم همراه با علت دقیق گزارش می‌شوند.
+            کد عضویت و کد ملی قبل از ذخیره نهایی بررسی شده و در صورت تکراری بودن در گام سوم (اعتبارسنجی) و چهارم همراه با علت دقیق گزارش می‌شوند.
           </p>
         </div>
       </div>
@@ -903,7 +1008,7 @@ onMounted(() => {
               پیش‌نمایش داده‌های نمونه و نگاشت ستون‌ها (سطرهای اول)
             </h3>
           </div>
-          <span class="text-[11px] text-slate-400 font-normal">جهت تطبیق و بررسی صحت ستون‌ها قبل از ثبت</span>
+          <span class="text-[11px] text-slate-400 font-normal">جهت تطبیق و بررسی صحت ستون‌ها قبل از مرحله اعتبارسنجی</span>
         </div>
 
         <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
@@ -974,7 +1079,7 @@ onMounted(() => {
         <Button
           variant="outline"
           size="sm"
-          :disabled="isSubmitting"
+          :disabled="isValidating"
           @click="currentStep = 1"
         >
           <ArrowRight class="w-4 h-4 ml-1" />
@@ -984,18 +1089,333 @@ onMounted(() => {
         <Button
           variant="primary"
           size="sm"
-          :loading="isSubmitting"
-          @click="confirmAndImport"
+          :loading="isValidating"
+          @click="validateAndGoToStep3"
         >
-          <RefreshCw v-if="isSubmitting" class="w-4 h-4 ml-1.5 animate-spin" />
-          <CheckCircle2 v-else class="w-4 h-4 ml-1.5" />
-          تایید و شروع ورود اطلاعات
+          <RefreshCw v-if="isValidating" class="w-4 h-4 ml-1.5 animate-spin" />
+          <ArrowLeft v-else class="w-4 h-4 ml-1.5" />
+          مرحله بعد: بررسی و اعتبارسنجی داده‌ها
         </Button>
       </div>
     </div>
 
-    <!-- ==================== STEP 3: EXECUTION & RESULTS ==================== -->
-    <div v-else-if="currentStep === 3 && executionResult" class="space-y-6">
+    <!-- ==================== STEP 3: PREVIEW & VALIDATION (NEW STEP) ==================== -->
+    <div v-else-if="currentStep === 3 && validationResult" class="space-y-6">
+      <!-- Validation Status Banner -->
+      <div
+        :class="[
+          'p-4 sm:p-5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4',
+          validationResult.summary.errorCount === 0
+            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+            : validationResult.summary.validCount > 0
+            ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+            : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200',
+        ]"
+      >
+        <div class="flex items-center gap-3">
+          <div
+            :class="[
+              'w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-white',
+              validationResult.summary.errorCount === 0
+                ? 'bg-emerald-600'
+                : validationResult.summary.validCount > 0
+                ? 'bg-amber-600'
+                : 'bg-rose-600',
+            ]"
+          >
+            <CheckCircle2 v-if="validationResult.summary.errorCount === 0" class="w-6 h-6" />
+            <AlertTriangle v-else-if="validationResult.summary.validCount > 0" class="w-6 h-6" />
+            <XCircle v-else class="w-6 h-6" />
+          </div>
+
+          <div>
+            <h3 class="text-sm font-bold">
+              <span v-if="validationResult.summary.errorCount === 0">
+                تمام سطرهای فایل معتبر بوده و بدون خطا آماده ورود هستند
+              </span>
+              <span v-else-if="validationResult.summary.validCount > 0">
+                برخی سطرها دارای خطای اعتبارسنجی یا تکرار هستند
+              </span>
+              <span v-else>
+                تمام سطرهای فایل دارای خطا هستند؛ لطفاً نگاشت ستون‌ها را اصلاح فرمایید
+              </span>
+            </h3>
+            <p class="text-xs opacity-90 mt-1">
+              از مجموع {{ toPersianDigits(validationResult.summary.totalRows) }} سطر،
+              تعداد <strong class="underline font-bold">{{ toPersianDigits(validationResult.summary.validCount) }} سطر درست</strong> و
+              تعداد <strong class="underline font-bold">{{ toPersianDigits(validationResult.summary.errorCount) }} سطر دارای خطا</strong> شناسایی شد.
+              <span v-if="validationResult.summary.validCount > 0 && validationResult.summary.errorCount > 0" class="mr-1">
+                (در صورت تایید نهایی، فقط ردیف‌های درست ثبت خواهند شد)
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <Badge
+          :variant="validationResult.summary.errorCount === 0 ? 'emerald' : validationResult.summary.validCount > 0 ? 'amber' : 'rose'"
+          size="md"
+        >
+          {{ validationResult.summary.errorCount === 0 ? 'آماده ورود ۱۰۰٪' : validationResult.summary.validCount > 0 ? 'قابل ثبت جزئی' : 'غیرقابل ثبت' }}
+        </Badge>
+      </div>
+
+      <!-- 4 Stat Summary Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div class="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">کل سطرهای فایل</span>
+            <FileText class="w-4 h-4 text-slate-400" />
+          </div>
+          <p class="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            {{ toPersianDigits(validationResult.summary.totalRows) }}
+          </p>
+          <span class="text-[11px] text-slate-400 mt-0.5 block">سطرهای بررسی‌شده</span>
+        </div>
+
+        <div class="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">داده‌های درست (معتبر)</span>
+            <CheckCircle2 class="w-4 h-4 text-emerald-500" />
+          </div>
+          <p class="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+            {{ toPersianDigits(validationResult.summary.validCount) }}
+          </p>
+          <span class="text-[11px] text-slate-400 mt-0.5 block">آماده ذخیره نهایی</span>
+        </div>
+
+        <div class="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-rose-600 dark:text-rose-400 font-medium">ردیف‌های دارای خطا</span>
+            <XCircle class="w-4 h-4 text-rose-500" />
+          </div>
+          <p class="text-2xl font-bold text-rose-700 dark:text-rose-300">
+            {{ toPersianDigits(validationResult.summary.errorCount) }}
+          </p>
+          <span class="text-[11px] text-slate-400 mt-0.5 block">تکراری، نامعتبر یا خالی</span>
+        </div>
+
+        <div class="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">نرخ سلامت داده‌ها</span>
+            <ShieldCheck class="w-4 h-4 text-blue-500" />
+          </div>
+          <p class="text-2xl font-bold text-blue-700 dark:text-blue-300">
+            {{ toPersianDigits(Math.round((validationResult.summary.validCount / (validationResult.summary.totalRows || 1)) * 100)) }}٪
+          </p>
+          <span class="text-[11px] text-slate-400 mt-0.5 block">درصد ردیف‌های معتبر</span>
+        </div>
+      </div>
+
+      <!-- Data Preview & Validation Table with Filters -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 space-y-4">
+        <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <!-- Filter Tabs -->
+          <div class="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl text-xs overflow-x-auto">
+            <button
+              type="button"
+              :class="[
+                'px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer whitespace-nowrap',
+                validationFilter === 'ALL'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200',
+              ]"
+              @click="setValidationFilter('ALL')"
+            >
+              همه ردیف‌ها ({{ toPersianDigits(validationResult.summary.totalRows) }})
+            </button>
+
+            <button
+              type="button"
+              :class="[
+                'px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5',
+                validationFilter === 'VALID'
+                  ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                  : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40',
+              ]"
+              @click="setValidationFilter('VALID')"
+            >
+              <Check class="w-3.5 h-3.5" />
+              داده‌های درست ({{ toPersianDigits(validationResult.summary.validCount) }})
+            </button>
+
+            <button
+              type="button"
+              :class="[
+                'px-3 py-1.5 rounded-lg font-medium transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5',
+                validationFilter === 'ERROR'
+                  ? 'bg-rose-600 text-white shadow-xs font-bold'
+                  : 'text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40',
+              ]"
+              @click="setValidationFilter('ERROR')"
+            >
+              <XCircle class="w-3.5 h-3.5" />
+              ردیف‌های خطا ({{ toPersianDigits(validationResult.summary.errorCount) }})
+            </button>
+          </div>
+
+          <!-- Search Box -->
+          <div class="relative w-full md:w-72">
+            <Input
+              v-model="validationSearch"
+              placeholder="جستجو در نام، کد ملی، کد عضویت یا خطا..."
+              size="sm"
+              @update:model-value="validationPage = 1"
+            >
+              <template #prefix>
+                <Search class="w-4 h-4 text-slate-400" />
+              </template>
+            </Input>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+          <table class="w-full text-right text-xs border-collapse">
+            <thead>
+              <tr class="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold">
+                <th class="py-2.5 px-3 text-center w-16">سطر</th>
+                <th class="py-2.5 px-3 whitespace-nowrap text-center">وضعیت</th>
+                <th class="py-2.5 px-3 whitespace-nowrap">کد عضویت</th>
+                <th class="py-2.5 px-3 whitespace-nowrap">نام و نام خانوادگی</th>
+                <th class="py-2.5 px-3 whitespace-nowrap">کد ملی / شناسه</th>
+                <th class="py-2.5 px-3 whitespace-nowrap">شماره همراه</th>
+                <th class="py-2.5 px-3">وضعیت اعتبارسنجی / علت خطا</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800 font-sans">
+              <tr
+                v-for="row in paginatedValidationRows"
+                :key="row.rowNumber"
+                :class="[
+                  'transition-colors',
+                  row.isValid
+                    ? 'hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10'
+                    : 'bg-rose-50/20 dark:bg-rose-950/20 hover:bg-rose-50/30',
+                ]"
+              >
+                <td class="py-2.5 px-3 text-center font-mono text-slate-500 dark:text-slate-400 bg-slate-50/30 dark:bg-slate-800/20">
+                  {{ toPersianDigits(row.rowNumber) }}
+                </td>
+                <td class="py-2.5 px-3 text-center whitespace-nowrap">
+                  <span
+                    v-if="row.isValid"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                  >
+                    <Check class="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                    درست
+                  </span>
+                  <span
+                    v-else
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                  >
+                    <XCircle class="w-3 h-3 text-rose-600 dark:text-rose-400" />
+                    خطا
+                  </span>
+                </td>
+                <td class="py-2.5 px-3 font-mono font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                  {{ row.memberCode ? toPersianDigits(row.memberCode) : '—' }}
+                </td>
+                <td class="py-2.5 px-3 font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                  {{ row.fullName || '—' }}
+                </td>
+                <td class="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                  {{ row.nationalCode ? toPersianDigits(row.nationalCode) : '—' }}
+                </td>
+                <td class="py-2.5 px-3 font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap" dir="ltr">
+                  {{ row.mobilePhone ? toPersianDigits(row.mobilePhone) : '—' }}
+                </td>
+                <td class="py-2.5 px-3 text-xs">
+                  <div v-if="row.isValid" class="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                    <Check class="w-3.5 h-3.5" />
+                    آماده ثبت در سیستم
+                  </div>
+                  <div v-else class="space-y-1">
+                    <div
+                      v-for="(err, eIdx) in row.errors"
+                      :key="eIdx"
+                      class="text-rose-700 dark:text-rose-400 font-medium flex items-center gap-1.5"
+                    >
+                      <span class="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"></span>
+                      {{ err }}
+                    </div>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Empty State -->
+              <tr v-if="paginatedValidationRows.length === 0">
+                <td colspan="7" class="py-8 text-center text-slate-400 dark:text-slate-500">
+                  هیچ سطری با فیلتر یا عبارت جستجوی انتخابی یافت نشد.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Toolbar -->
+        <div v-if="filteredValidationRows.length > validationPageSize" class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-slate-500 dark:text-slate-400">
+          <div>
+            نمایش {{ toPersianDigits((validationPage - 1) * validationPageSize + 1) }} تا
+            {{ toPersianDigits(Math.min(validationPage * validationPageSize, filteredValidationRows.length)) }}
+            از مجموع {{ toPersianDigits(filteredValidationRows.length) }} سطر
+          </div>
+
+          <div class="flex items-center gap-1">
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              :disabled="validationPage <= 1"
+              @click="validationPage--"
+            >
+              قبلی
+            </button>
+            <span class="px-2 font-mono font-medium">
+              صفحه {{ toPersianDigits(validationPage) }} از {{ toPersianDigits(totalValidationPages) }}
+            </span>
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              :disabled="validationPage >= totalValidationPages"
+              @click="validationPage++"
+            >
+              بعدی
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 Navigation Buttons -->
+      <div class="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="isSubmitting"
+          @click="currentStep = 2"
+        >
+          <ArrowRight class="w-4 h-4 ml-1" />
+          مرحله قبل (اصلاح نگاشت و تنظیمات)
+        </Button>
+
+        <Button
+          variant="primary"
+          size="sm"
+          :loading="isSubmitting"
+          :disabled="validationResult.summary.validCount === 0 || isSubmitting"
+          @click="confirmAndImport"
+        >
+          <RefreshCw v-if="isSubmitting" class="w-4 h-4 ml-1.5 animate-spin" />
+          <CheckCircle2 v-else class="w-4 h-4 ml-1.5" />
+          {{
+            validationResult.summary.validCount > 0
+              ? `تأیید نهایی و واردسازی (${toPersianDigits(validationResult.summary.validCount)} عضو معتبر)`
+              : 'امکان ثبت وجود ندارد (فاقد رکورد معتبر)'
+          }}
+        </Button>
+      </div>
+    </div>
+
+    <!-- ==================== STEP 4: EXECUTION & RESULTS ==================== -->
+    <div v-else-if="currentStep === 4 && executionResult" class="space-y-6">
       <!-- Status Announcement Banner -->
       <div
         :class="[
@@ -1098,7 +1518,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- SECTION 3.1: Failed Rows Table (If any) -->
+      <!-- SECTION 4.1: Failed Rows Table (If any) -->
       <div
         v-if="executionResult.summary.skippedCount > 0"
         class="bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-900/60 p-5 space-y-4"
@@ -1196,7 +1616,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- SECTION 3.2: Successfully Imported Members Preview -->
+      <!-- SECTION 4.2: Successfully Imported Members Preview -->
       <div
         v-if="executionResult.importedMembers?.length"
         class="bg-white dark:bg-slate-900 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 p-5 space-y-3"

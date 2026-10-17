@@ -12,6 +12,7 @@ import type {
   IImportPreviewResponse,
   IImportConfirmPayload,
   IImportExecutionResponse,
+  IImportValidationResponse,
 } from '@/types';
 
 export const membersApi = {
@@ -112,6 +113,14 @@ export const membersApi = {
           'Content-Type': 'multipart/form-data',
         },
       }
+    );
+    return response.data;
+  },
+
+  async validateImport(payload: IImportConfirmPayload): Promise<ApiResponse<IImportValidationResponse>> {
+    const response = await apiClient.post<ApiResponse<IImportValidationResponse>>(
+      '/members/import/validate',
+      payload
     );
     return response.data;
   },

@@ -63,3 +63,28 @@ export interface IImportExecutionResponse {
     fullName: string;
   }>;
 }
+
+export interface IImportValidateRow {
+  rowNumber: number;
+  isValid: boolean;
+  memberCode?: string;
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
+  nationalCode?: string;
+  mobilePhone?: string;
+  email?: string;
+  membershipDate?: string;
+  expiryDate?: string;
+  errors: string[];
+}
+
+export interface IImportValidationResponse {
+  summary: {
+    totalRows: number;
+    validCount: number;
+    errorCount: number;
+  };
+  rows: IImportValidateRow[];
+}
+

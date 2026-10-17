@@ -195,18 +195,6 @@ function navigateTo(path: string) {
       </a>
     </div>
 
-    <!-- Attribution Card -->
-    <div
-      v-if="!themeStore.sidebarCollapsed"
-      class="px-3 pt-2 pb-1 shrink-0"
-    >
-      <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-800 text-center">
-        <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
-          کاری از متخصصان کمسیون نرم افزار استان اردبیل
-        </p>
-      </div>
-    </div>
-
     <!-- Sidebar Footer / Collapse Toggle on Desktop -->
     <div
       class="p-3 border-t border-slate-200 dark:border-slate-800 shrink-0 hidden lg:flex items-center justify-between"
