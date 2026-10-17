@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { watch, onMounted, onUnmounted } from 'vue';
 import { X } from 'lucide-vue-next';
+import { lockBodyScroll, unlockBodyScroll } from '@/utils/scrollLock';
 
 interface Props {
   open: boolean;
@@ -32,11 +33,11 @@ function handleKeydown(e: KeyboardEvent) {
 
 watch(
   () => props.open,
-  (val) => {
-    if (val) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
+  (val, oldVal) => {
+    if (val && !oldVal) {
+      lockBodyScroll();
+    } else if (!val && oldVal) {
+      unlockBodyScroll();
     }
   }
 );
@@ -44,13 +45,15 @@ watch(
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown);
   if (props.open) {
-    document.body.style.overflow = 'hidden';
+    lockBodyScroll();
   }
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
-  document.body.style.overflow = '';
+  if (props.open) {
+    unlockBodyScroll();
+  }
 });
 </script>
 

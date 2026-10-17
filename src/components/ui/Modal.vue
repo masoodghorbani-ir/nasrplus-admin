@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { watch, onMounted, onUnmounted, computed } from 'vue';
 import { X } from 'lucide-vue-next';
+import { lockBodyScroll, unlockBodyScroll } from '@/utils/scrollLock';
 
 interface Props {
   open: boolean;
@@ -46,11 +47,11 @@ function handleKeydown(e: KeyboardEvent) {
 
 watch(
   () => props.open,
-  (val) => {
-    if (val) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
+  (val, oldVal) => {
+    if (val && !oldVal) {
+      lockBodyScroll();
+    } else if (!val && oldVal) {
+      unlockBodyScroll();
     }
   }
 );
@@ -58,13 +59,15 @@ watch(
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown);
   if (props.open) {
-    document.body.style.overflow = 'hidden';
+    lockBodyScroll();
   }
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
-  document.body.style.overflow = '';
+  if (props.open) {
+    unlockBodyScroll();
+  }
 });
 
 const sizeClasses = computed(() => {
@@ -101,7 +104,7 @@ const sizeClasses = computed(() => {
     >
       <div
         v-if="open"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+        class="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
         dir="rtl"
       >
         <!-- Backdrop -->

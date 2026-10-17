@@ -220,6 +220,13 @@ async function handleDeleteTelephone() {
     phoneToDelete.value = null;
   }
 }
+
+function handleEdit() {
+  if (!member.value) return;
+  const currentMember = member.value;
+  emit('update:open', false);
+  emit('edit', currentMember);
+}
 </script>
 
 <template>
@@ -250,7 +257,7 @@ async function handleDeleteTelephone() {
         <Button
           variant="outline"
           size="sm"
-          @click="member && emit('edit', member)"
+          @click="handleEdit"
         >
           <Edit class="w-3.5 h-3.5 ml-1" />
           ویرایش

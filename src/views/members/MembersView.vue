@@ -185,11 +185,13 @@ function resetFilters() {
 }
 
 function openCreateModal() {
+  isDetailDrawerOpen.value = false;
   editingMember.value = null;
   isFormModalOpen.value = true;
 }
 
 function openEditModal(m: Member) {
+  isDetailDrawerOpen.value = false;
   editingMember.value = m;
   isFormModalOpen.value = true;
 }
