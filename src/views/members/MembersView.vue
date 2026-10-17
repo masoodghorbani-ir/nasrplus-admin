@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { membersApi } from '@/api';
 import { useLookupsStore, useNotificationStore } from '@/stores';
 import type { Member, MemberStatus } from '@/types';
@@ -39,6 +39,7 @@ import MemberDetailDrawer from './MemberDetailDrawer.vue';
 import MemberImportModal from './MemberImportModal.vue';
 
 const route = useRoute();
+const router = useRouter();
 const lookupsStore = useLookupsStore();
 const notificationStore = useNotificationStore();
 
@@ -47,12 +48,31 @@ const isLoading = ref(false);
 const totalRecords = ref(0);
 const totalPages = ref(1);
 
+// Helper to resolve raw query param (ID, title or code) to valid membershipType ID
+function resolveMembershipTypeId(raw: string): string {
+  if (!raw) return '';
+  if (lookupsStore.membershipTypes.length > 0) {
+    const match = lookupsStore.membershipTypes.find(
+      (m) =>
+        m._id === raw ||
+        m.title === raw ||
+        (m.code && m.code.toLowerCase() === raw.toLowerCase())
+    );
+    if (match) return match._id;
+  }
+  return raw;
+}
+
+const initialQueryTypeId = (route.query.membershipTypeId || route.query.type)
+  ? String(route.query.membershipTypeId || route.query.type)
+  : '';
+
 // Query & Filter states
 const page = ref(1);
 const limit = ref(10);
 const search = ref('');
 const selectedStatus = ref<MemberStatus | ''>('');
-const selectedMembershipTypeId = ref('');
+const selectedMembershipTypeId = ref(initialQueryTypeId);
 const selectedNatureOfMembership = ref('');
 const selectedSpecializationId = ref('');
 const selectedRankId = ref('');
@@ -233,6 +253,52 @@ function exportCsv() {
   notificationStore.success('فایل گزارش با موفقیت دانلود شد.');
 }
 
+// 1. Sync from URL Query to State
+watch(
+  () => [route.query.membershipTypeId, route.query.type],
+  ([newTypeId, newType]) => {
+    const raw = (newTypeId || newType) ? String(newTypeId || newType) : '';
+    const resolved = resolveMembershipTypeId(raw);
+    if (selectedMembershipTypeId.value !== resolved) {
+      selectedMembershipTypeId.value = resolved;
+    }
+  }
+);
+
+// If lookupsStore loads after component mount, re-resolve title/code if needed
+watch(
+  () => lookupsStore.membershipTypes,
+  () => {
+    const raw = (route.query.membershipTypeId || route.query.type)
+      ? String(route.query.membershipTypeId || route.query.type)
+      : '';
+    if (raw) {
+      const resolved = resolveMembershipTypeId(raw);
+      if (resolved && selectedMembershipTypeId.value !== resolved) {
+        selectedMembershipTypeId.value = resolved;
+      }
+    }
+  }
+);
+
+// 2. Sync from State to URL Query
+watch(selectedMembershipTypeId, (newVal) => {
+  const currentQueryVal = (route.query.membershipTypeId || route.query.type)
+    ? String(route.query.membershipTypeId || route.query.type)
+    : '';
+  if (newVal !== currentQueryVal) {
+    const nextQuery = { ...route.query };
+    if (newVal) {
+      nextQuery.membershipTypeId = newVal;
+      delete nextQuery.type;
+    } else {
+      delete nextQuery.membershipTypeId;
+      delete nextQuery.type;
+    }
+    router.replace({ query: nextQuery });
+  }
+});
+
 watch(
   [
     selectedStatus,
@@ -249,8 +315,11 @@ watch(
   }
 );
 
-onMounted(() => {
-  lookupsStore.fetchAllLookups();
+onMounted(async () => {
+  await lookupsStore.fetchAllLookups();
+  if (initialQueryTypeId) {
+    selectedMembershipTypeId.value = resolveMembershipTypeId(initialQueryTypeId);
+  }
   loadMembers();
 
   // If redirected with viewId query param
