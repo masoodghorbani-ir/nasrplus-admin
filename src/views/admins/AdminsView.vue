@@ -288,13 +288,11 @@ onMounted(() => {
           <DatePicker
             v-model="adminDateFrom"
             placeholder="از تاریخ ثبت..."
-            size="sm"
           />
 
           <DatePicker
             v-model="adminDateTo"
             placeholder="تا تاریخ ثبت..."
-            size="sm"
           />
         </div>
       </div>

@@ -394,13 +394,11 @@ onMounted(() => {
         <DatePicker
           v-model="dateFrom"
           placeholder="از تاریخ..."
-          size="sm"
         />
 
         <DatePicker
           v-model="dateTo"
           placeholder="تا تاریخ..."
-          size="sm"
         />
       </div>
 

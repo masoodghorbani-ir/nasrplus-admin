@@ -56,7 +56,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/dashboard/DashboardView.vue'),
         meta: {
           requiresAuth: true,
-          title: 'پیشخوان و آمار جامع',
+          title: 'داشبورد',
         },
       },
       {
@@ -65,7 +65,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/members/MembersView.vue'),
         meta: {
           requiresAuth: true,
-          title: 'مدیریت اعضای صنف',
+          title: 'مدیریت اعضا',
           permission: 'members:read',
         },
       },

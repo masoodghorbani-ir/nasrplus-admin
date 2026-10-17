@@ -435,12 +435,12 @@ onUnmounted(() => {
 const sizeClasses = computed(() => {
   switch (props.size) {
     case 'sm':
-      return 'h-8 px-2.5 text-xs';
+      return 'h-9 px-3 text-xs';
     case 'lg':
       return 'h-12 px-4 text-base';
     case 'md':
     default:
-      return 'h-11 sm:h-10 px-3.5 text-base sm:text-sm';
+      return 'h-10 px-3.5 text-sm';
   }
 });
 </script>
@@ -469,7 +469,7 @@ const sizeClasses = computed(() => {
       :aria-expanded="isOpen"
       :aria-controls="`dp_popup_${inputId}`"
       :class="[
-        'relative flex items-center justify-between rounded-xl transition-all duration-150 cursor-pointer',
+        'relative flex items-center justify-between rounded-lg transition-all duration-150 cursor-pointer',
         sizeClasses,
         inputClass || 'bg-white dark:bg-slate-900',
         error

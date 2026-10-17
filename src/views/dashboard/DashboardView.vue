@@ -198,7 +198,7 @@ const doughnutChartOptions = computed(() => ({
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
       <div>
         <h1 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-          پیشخوان مدیریت نظام صنفی رایانه‌ای
+          داشبورد مدیریت نظام صنفی رایانه‌ای
         </h1>
         <p class="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
           <span>خوش آمدید، {{ authStore.user?.fullName }}</span>

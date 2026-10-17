@@ -23,11 +23,11 @@ function handleImported(_result: IImportExecutionResponse) {
       <div>
         <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-1">
           <router-link to="/dashboard" class="hover:text-brand-600 transition-colors">
-            پیشخوان
+            داشبورد
           </router-link>
           <span>/</span>
           <router-link to="/members" class="hover:text-brand-600 transition-colors">
-            مدیریت اعضای صنف
+            مدیریت اعضا
           </router-link>
           <span>/</span>
           <span class="text-slate-800 dark:text-slate-200 font-medium">ورود از اکسل</span>

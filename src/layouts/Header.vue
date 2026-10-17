@@ -24,7 +24,7 @@ const isProfileModalOpen = ref(false);
 const isLogoutModalOpen = ref(false);
 
 const breadcrumbTitle = computed(() => {
-  return (route.meta?.title as string) || 'پیشخوان';
+  return (route.meta?.title as string) || 'داشبورد';
 });
 
 const userInitials = computed(() => {

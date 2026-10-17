@@ -352,7 +352,7 @@ onUnmounted(() => {
 const sizeClasses = computed(() => {
   switch (props.size) {
     case 'sm':
-      return 'h-8 px-2.5 text-xs';
+      return 'h-9 px-3 text-xs';
     case 'lg':
       return 'h-12 px-4 text-base';
     case 'md':

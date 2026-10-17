@@ -31,13 +31,13 @@ const themeStore = useThemeStore();
 const navItems: NavItem[] = [
   {
     name: 'dashboard',
-    label: 'پیشخوان و آمار',
+    label: 'داشبورد',
     path: '/dashboard',
     icon: LayoutDashboard,
   },
   {
     name: 'members',
-    label: 'مدیریت اعضای صنف',
+    label: 'مدیریت اعضا',
     path: '/members',
     icon: Users,
     permission: 'members:read',

@@ -40,13 +40,13 @@ const variantClasses = computed(() => {
 const sizeClasses = computed(() => {
   switch (props.size) {
     case 'sm':
-      return 'h-8 px-3 text-xs gap-1.5 rounded-lg';
+      return 'h-9 px-3.5 text-xs gap-1.5 rounded-lg';
     case 'md':
-      return 'h-9 px-4 text-sm gap-2 rounded-lg';
+      return 'h-10 px-4 text-sm gap-2 rounded-lg';
     case 'lg':
-      return 'h-11 px-5 text-base gap-2.5 rounded-xl';
+      return 'h-12 px-5 text-base gap-2.5 rounded-xl';
     case 'icon':
-      return 'h-9 w-9 p-0 rounded-lg justify-center';
+      return 'h-10 w-10 p-0 rounded-lg justify-center';
     default:
       return '';
   }
