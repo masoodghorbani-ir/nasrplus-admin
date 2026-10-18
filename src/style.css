@@ -58,3 +58,9 @@ th,
 td {
   font-family: var(--font-sans);
 }
+
+/* Prevent unwanted browser focus outlines on click while preserving keyboard accessibility */
+button:focus:not(:focus-visible) {
+  outline: none;
+}
+

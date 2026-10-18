@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import { membersApi } from '@/api';
+import { membersApi, companiesApi } from '@/api';
 import { useLookupsStore, useNotificationStore } from '@/stores';
 import type {
   Member,
@@ -10,6 +10,7 @@ import type {
   CreateAddressInput,
   CreateTelephoneInput,
   AcademicQualification,
+  Company,
 } from '@/types';
 import {
   Drawer,
@@ -43,6 +44,9 @@ import {
   Edit2,
   Star,
   Copy,
+  Building2,
+  ShieldCheck,
+  FileText,
 } from 'lucide-vue-next';
 import { extractErrorMessage } from '@/utils/errors';
 import { getStoredMemberQualifications } from '@/utils/qualifications';
@@ -144,6 +148,32 @@ watch(provinceInput, (newProvId) => {
   }
 });
 
+const companyDetails = ref<Company | null>(null);
+
+async function resolveCompanyDetails(cInfo: any) {
+  if (!cInfo) {
+    companyDetails.value = null;
+    return;
+  }
+  if (typeof cInfo === 'object' && cInfo.title) {
+    companyDetails.value = cInfo;
+    return;
+  }
+  const cId = typeof cInfo === 'string' ? cInfo : cInfo?._id;
+  if (cId) {
+    try {
+      const res = await companiesApi.getCompanyById(cId);
+      if (res.success && res.data) {
+        companyDetails.value = res.data;
+      }
+    } catch {
+      companyDetails.value = null;
+    }
+  } else {
+    companyDetails.value = null;
+  }
+}
+
 async function loadMemberDetails() {
   if (!props.memberId) return;
 
@@ -154,6 +184,11 @@ async function loadMemberDetails() {
       member.value = res.data;
       addresses.value = res.data.addresses || [];
       telephones.value = res.data.telephones || [];
+      if (res.data.companyInformation) {
+        resolveCompanyDetails(res.data.companyInformation);
+      } else {
+        companyDetails.value = null;
+      }
     }
   } catch (err) {
     notificationStore.error(extractErrorMessage(err, 'خطا در بارگذاری جزییات پرونده عضو'));
@@ -171,6 +206,7 @@ watch(
       loadMemberDetails();
     } else {
       member.value = null;
+      companyDetails.value = null;
     }
   }
 );
@@ -425,78 +461,135 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
 <template>
   <Drawer
     :open="open"
-    width="max-w-2xl"
+    width="max-w-3xl sm:max-w-4xl lg:max-w-5xl 2xl:max-w-[1150px]"
     @close="emit('update:open', false)"
   >
     <template #header>
-      <div v-if="member" class="flex items-center justify-between w-full pl-6">
-        <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-2xl bg-brand-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
-            {{ member.firstName ? member.firstName[0] : 'ع' }}
+      <div v-if="member" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full pl-6">
+        <div class="flex items-center gap-3.5">
+          <!-- Avatar Icon / Initial -->
+          <div
+            :class="[
+              'w-12 h-12 rounded-2xl font-black flex items-center justify-center text-base shadow-sm shrink-0',
+              companyDetails && !member.firstName
+                ? 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white'
+                : 'bg-gradient-to-br from-brand-600 to-brand-700 text-white'
+            ]"
+          >
+            <Building2 v-if="companyDetails && !member.firstName" class="w-6 h-6" />
+            <span v-else>{{ member.firstName ? member.firstName[0] : (companyDetails?.title ? companyDetails.title[0] : 'ع') }}</span>
           </div>
+
+          <!-- Member Name, Code & Subtitles -->
           <div class="text-right">
-            <h3 class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              {{ member.firstName || '' }} {{ member.lastName || '' }}
-              <span class="text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-md tabular-nums">
+            <h3 class="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 flex flex-wrap items-center gap-2">
+              <span>{{ member.firstName || '' }} {{ member.lastName || '' }}</span>
+              <span v-if="!member.firstName && !member.lastName && companyDetails?.title">
+                {{ companyDetails.title }}
+              </span>
+
+              <!-- Member Code Badge with copy -->
+              <span
+                class="text-xs font-bold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/80 border border-brand-200/60 dark:border-brand-800/60 px-2 py-0.5 rounded-lg tabular-nums inline-flex items-center gap-1 cursor-pointer hover:bg-brand-100 dark:hover:bg-brand-900/60 transition"
+                title="برای کپی کد عضویت کلیک کنید"
+                @click="copyToClipboard(member.memberCode, 'کد عضویت کپی شد')"
+              >
                 {{ toPersianDigits(member.memberCode) }}
+                <Copy class="w-3 h-3 opacity-60 hover:opacity-100" />
+              </span>
+
+              <!-- Affiliated Company chip if person has company -->
+              <span
+                v-if="companyDetails?.title && (member.firstName || member.lastName)"
+                class="text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/60 px-2 py-0.5 rounded-lg inline-flex items-center gap-1"
+              >
+                <Building2 class="w-3 h-3 text-blue-500" />
+                {{ companyDetails.title }}
               </span>
             </h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              پرونده عضویت صنف &bull; ثبت: {{ formatPersianDate(member.createdAt) }}
+
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5 flex-wrap">
+              <span class="inline-flex items-center gap-1">
+                <Calendar class="w-3.5 h-3.5 text-slate-400" />
+                ثبت پرونده: {{ formatPersianDate(member.createdAt) }}
+              </span>
             </p>
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          @click="handleEdit"
-        >
-          <Edit class="w-3.5 h-3.5 ml-1" />
-          ویرایش پرونده
-        </Button>
+        <!-- Header Actions -->
+        <div class="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            class="text-xs"
+            @click="handleEdit"
+          >
+            <Edit class="w-3.5 h-3.5 ml-1 text-slate-500" />
+            ویرایش پرونده
+          </Button>
+        </div>
       </div>
-      <div v-else class="text-sm font-bold">
-        در حال دریافت جزییات...
+      <div v-else class="text-sm font-bold text-slate-400">
+        در حال دریافت جزییات پرونده عضو...
       </div>
     </template>
 
     <div v-if="member" class="space-y-6 text-right select-none" dir="rtl">
-      <!-- Status & Badges Banner -->
-      <div class="flex flex-wrap items-center gap-2 pb-4 border-b border-slate-100 dark:border-slate-800">
-        <!-- Status badge -->
-        <span
-          :class="[
-            'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border',
-            statusConfig[member.status]?.bgClass,
-            statusConfig[member.status]?.textClass,
-            statusConfig[member.status]?.borderClass,
-          ]"
-        >
-          <span :class="['w-2 h-2 rounded-full', statusConfig[member.status]?.dotClass]" />
-          وضعیت: {{ statusConfig[member.status]?.label || member.status }}
-        </span>
+      <!-- Status & Badges Banner Card -->
+      <div class="p-3.5 sm:p-4 bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Status badge -->
+          <span
+            :class="[
+              'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-2xs',
+              statusConfig[member.status]?.bgClass,
+              statusConfig[member.status]?.textClass,
+              statusConfig[member.status]?.borderClass,
+            ]"
+          >
+            <span :class="['w-2 h-2 rounded-full animate-pulse', statusConfig[member.status]?.dotClass]" />
+            وضعیت: {{ statusConfig[member.status]?.label || member.status }}
+          </span>
 
-        <!-- Nature of membership badge -->
-        <Badge variant="purple">
-          ماهیت: {{ lookupsStore.getNatureTitle(member.natureOfMembership) }}
-        </Badge>
+          <!-- Nature of membership badge -->
+          <Badge variant="purple" size="md">
+            ماهیت: {{ lookupsStore.getNatureTitle(member.natureOfMembership) }}
+          </Badge>
 
-        <!-- Specialization badge -->
-        <Badge variant="brand">
-          رسته: {{ lookupsStore.getSpecializationTitle(member.specializationId) }}
-        </Badge>
+          <!-- Specialization badge -->
+          <Badge variant="brand" size="md">
+            رسته: {{ lookupsStore.getSpecializationTitle(member.specializationId) }}
+          </Badge>
+
+          <!-- Rank badge -->
+          <Badge v-if="member.rankId" variant="amber" size="md">
+            رتبه: {{ lookupsStore.getRankTitle(member.rankId) }}
+          </Badge>
+        </div>
+
+        <!-- Quick metadata on the left -->
+        <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+          <div v-if="member.nationalCode" class="flex items-center gap-1">
+            <span class="text-slate-400">کد ملی:</span>
+            <strong class="font-bold text-slate-800 dark:text-slate-200 tabular-nums">{{ toPersianDigits(member.nationalCode) }}</strong>
+          </div>
+          <div v-if="member.membershipDate" class="hidden sm:flex items-center gap-1 border-r border-slate-200 dark:border-slate-700 pr-3">
+            <span class="text-slate-400">تاریخ شروع:</span>
+            <strong class="font-bold text-slate-800 dark:text-slate-200 tabular-nums">{{ formatPersianDate(member.membershipDate) }}</strong>
+          </div>
+        </div>
       </div>
 
-      <!-- Navigation Tabs -->
-      <div class="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
+      <!-- Segmented Navigation Tabs -->
+      <div class="bg-slate-100/80 dark:bg-slate-800/60 p-1.5 rounded-2xl flex items-center gap-1.5 overflow-x-auto border border-slate-200/60 dark:border-slate-700/60">
         <button
           type="button"
           :class="[
-            'flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors cursor-pointer',
+            'flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap border outline-none focus:outline-none focus-visible:outline-none focus:ring-0 active:outline-none select-none',
             activeTab === 'info'
-              ? 'border-brand-600 text-brand-600 dark:text-brand-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
+              ? 'bg-white dark:bg-slate-900 text-brand-700 dark:text-brand-300 shadow-2xs border-slate-200/80 dark:border-slate-700/80'
+              : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800/50',
           ]"
           @click="activeTab = 'info'"
         >
@@ -507,16 +600,21 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
         <button
           type="button"
           :class="[
-            'flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors cursor-pointer',
+            'flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap border outline-none focus:outline-none focus-visible:outline-none focus:ring-0 active:outline-none select-none',
             activeTab === 'addresses'
-              ? 'border-brand-600 text-brand-600 dark:text-brand-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
+              ? 'bg-white dark:bg-slate-900 text-brand-700 dark:text-brand-300 shadow-2xs border-slate-200/80 dark:border-slate-700/80'
+              : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800/50',
           ]"
           @click="activeTab = 'addresses'"
         >
           <MapPin class="w-4 h-4" />
           نشانی‌ها و شعب
-          <span class="px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] tabular-nums">
+          <span
+            :class="[
+              'px-1.5 py-0.2 rounded-full text-[10px] tabular-nums font-bold transition-colors',
+              activeTab === 'addresses' ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300' : 'bg-slate-200/80 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300'
+            ]"
+          >
             {{ toPersianDigits(addresses.length) }}
           </span>
         </button>
@@ -524,16 +622,21 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
         <button
           type="button"
           :class="[
-            'flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors cursor-pointer',
+            'flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap border outline-none focus:outline-none focus-visible:outline-none focus:ring-0 active:outline-none select-none',
             activeTab === 'telephones'
-              ? 'border-brand-600 text-brand-600 dark:text-brand-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
+              ? 'bg-white dark:bg-slate-900 text-brand-700 dark:text-brand-300 shadow-2xs border-slate-200/80 dark:border-slate-700/80'
+              : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800/50',
           ]"
           @click="activeTab = 'telephones'"
         >
           <Phone class="w-4 h-4" />
           شماره‌های تماس
-          <span class="px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] tabular-nums">
+          <span
+            :class="[
+              'px-1.5 py-0.2 rounded-full text-[10px] tabular-nums font-bold transition-colors',
+              activeTab === 'telephones' ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300' : 'bg-slate-200/80 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300'
+            ]"
+          >
             {{ toPersianDigits(telephones.length) }}
           </span>
         </button>
@@ -541,18 +644,18 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
         <button
           type="button"
           :class="[
-            'flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors cursor-pointer',
+            'flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap border outline-none focus:outline-none focus-visible:outline-none focus:ring-0 active:outline-none select-none',
             activeTab === 'qualifications'
-              ? 'border-brand-600 text-brand-600 dark:text-brand-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
+              ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-2xs border-purple-200/80 dark:border-purple-800/80'
+              : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800/50',
           ]"
           @click="activeTab = 'qualifications'"
         >
-          <GraduationCap class="w-4 h-4" />
+          <GraduationCap class="w-4 h-4 text-purple-600 dark:text-purple-400" />
           مدارک و تحصیلات
           <span
             v-if="member.academicQualifications?.length"
-            class="px-1.5 py-0.2 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] tabular-nums"
+            class="px-1.5 py-0.2 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] tabular-nums font-bold"
           >
             {{ toPersianDigits(member.academicQualifications.length) }}
           </span>
@@ -561,66 +664,148 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
 
       <!-- Tab 1: Info -->
       <div v-if="activeTab === 'info'" class="space-y-6">
-        <!-- Personal info grid -->
+        <!-- Personal info Section -->
         <div>
-          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-            اطلاعات شناسنامه‌ای
+          <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <User class="w-3.5 h-3.5 text-brand-600" />
+            <span>اطلاعات شناسنامه‌ای و فردی</span>
           </h4>
 
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-            <div class="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
-              <span class="text-slate-400 block mb-1">کد ملی:</span>
-              <span class="font-bold text-slate-800 dark:text-slate-200 tabular-nums">
-                {{ toPersianDigits(member.nationalCode) || '—' }}
-              </span>
+          <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 text-xs">
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl relative group">
+              <span class="text-slate-400 block text-[11px] mb-1">کد ملی:</span>
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-slate-800 dark:text-slate-200 tabular-nums text-sm">
+                  {{ toPersianDigits(member.nationalCode) || '—' }}
+                </span>
+                <button
+                  v-if="member.nationalCode"
+                  type="button"
+                  class="text-slate-400 hover:text-brand-600 opacity-0 group-hover:opacity-100 transition p-1"
+                  title="کپی کد ملی"
+                  @click="copyToClipboard(member.nationalCode, 'کد ملی کپی شد')"
+                >
+                  <Copy class="w-3 h-3" />
+                </button>
+              </div>
             </div>
 
-            <div class="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
-              <span class="text-slate-400 block mb-1">نام پدر:</span>
-              <span class="font-bold text-slate-800 dark:text-slate-200">
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl">
+              <span class="text-slate-400 block text-[11px] mb-1">نام پدر:</span>
+              <span class="font-bold text-slate-800 dark:text-slate-200 text-sm">
                 {{ member.fatherName || '—' }}
               </span>
             </div>
 
-            <div class="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
-              <span class="text-slate-400 block mb-1">جنسیت:</span>
-              <span class="font-bold text-slate-800 dark:text-slate-200">
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl">
+              <span class="text-slate-400 block text-[11px] mb-1">جنسیت:</span>
+              <span class="font-bold text-slate-800 dark:text-slate-200 text-sm">
                 {{ member.gender ? genderConfig[member.gender] : '—' }}
               </span>
             </div>
 
-            <div class="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
-              <span class="text-slate-400 block mb-1">تاریخ تولد:</span>
-              <span class="font-bold text-slate-800 dark:text-slate-200 tabular-nums">
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl">
+              <span class="text-slate-400 block text-[11px] mb-1">تاریخ تولد:</span>
+              <span class="font-bold text-slate-800 dark:text-slate-200 tabular-nums text-sm">
                 {{ formatPersianDate(member.birthDate) }}
               </span>
             </div>
 
-            <div class="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
-              <span class="text-slate-400 block mb-1">تاریخ عضویت:</span>
-              <span class="font-bold text-slate-800 dark:text-slate-200 tabular-nums">
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl">
+              <span class="text-slate-400 block text-[11px] mb-1">تاریخ شروع عضویت:</span>
+              <span class="font-bold text-slate-800 dark:text-slate-200 tabular-nums text-sm">
                 {{ formatPersianDate(member.membershipDate) }}
               </span>
             </div>
 
-            <div class="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
-              <span class="text-slate-400 block mb-1">تاریخ انقضا:</span>
-              <span class="font-bold text-slate-800 dark:text-slate-200 tabular-nums">
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl">
+              <span class="text-slate-400 block text-[11px] mb-1">تاریخ انقضای عضویت:</span>
+              <span class="font-bold text-slate-800 dark:text-slate-200 tabular-nums text-sm">
                 {{ formatPersianDate(member.expiryDate) }}
               </span>
+            </div>
+
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl">
+              <span class="text-slate-400 block text-[11px] mb-1">کد پرونده عضویت:</span>
+              <span class="font-bold text-brand-600 dark:text-brand-400 tabular-nums text-sm">
+                {{ toPersianDigits(member.memberCode) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Company Information (if available) -->
+        <div v-if="companyDetails || member.companyInformation">
+          <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Building2 class="w-3.5 h-3.5 text-blue-600" />
+            <span>وابستگی حقوقی و شرکت مربوطه</span>
+          </h4>
+
+          <div class="p-4 bg-gradient-to-r from-blue-50/70 to-indigo-50/40 dark:from-blue-950/30 dark:to-indigo-950/20 rounded-2xl border border-blue-200/70 dark:border-blue-900/60 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-blue-200/50 dark:border-blue-900/50">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-2xs">
+                  <Building2 class="w-5 h-5" />
+                </div>
+                <div>
+                  <h5 class="font-black text-slate-900 dark:text-slate-100 text-sm sm:text-base">
+                    {{ companyDetails?.title || 'شرکت طرف قرارداد عضو' }}
+                  </h5>
+                  <p v-if="companyDetails?.companyType" class="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                    {{ companyDetails.companyType }}
+                  </p>
+                </div>
+              </div>
+
+              <Badge v-if="companyDetails?.nationalId" variant="blue" size="md">
+                شناسه ملی: {{ toPersianDigits(companyDetails.nationalId) }}
+              </Badge>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
+              <div v-if="companyDetails?.registrationNumber" class="p-2.5 bg-white/70 dark:bg-slate-900/60 rounded-xl">
+                <span class="text-slate-400 block text-[11px] mb-0.5">شماره ثبت:</span>
+                <span class="font-bold text-slate-800 dark:text-slate-200 tabular-nums">
+                  {{ toPersianDigits(companyDetails.registrationNumber) }}
+                </span>
+              </div>
+
+              <div v-if="companyDetails?.economicCode" class="p-2.5 bg-white/70 dark:bg-slate-900/60 rounded-xl">
+                <span class="text-slate-400 block text-[11px] mb-0.5">کد اقتصادی:</span>
+                <span class="font-bold text-slate-800 dark:text-slate-200 tabular-nums">
+                  {{ toPersianDigits(companyDetails.economicCode) }}
+                </span>
+              </div>
+
+              <div v-if="companyDetails?.ceoName" class="p-2.5 bg-white/70 dark:bg-slate-900/60 rounded-xl">
+                <span class="text-slate-400 block text-[11px] mb-0.5">نام مدیرعامل:</span>
+                <span class="font-bold text-slate-800 dark:text-slate-200">
+                  {{ companyDetails.ceoName }}
+                </span>
+              </div>
+
+              <div v-if="companyDetails?.website" class="p-2.5 bg-white/70 dark:bg-slate-900/60 rounded-xl">
+                <span class="text-slate-400 block text-[11px] mb-0.5">وب‌سایت:</span>
+                <a :href="companyDetails.website.startsWith('http') ? companyDetails.website : `https://${companyDetails.website}`" target="_blank" class="font-bold text-blue-600 hover:underline truncate block ltr" dir="ltr">
+                  {{ companyDetails.website }}
+                </a>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Guild Information Grid -->
         <div>
-          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-            اطلاعات صنفی و حرفه‌ای
+          <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Briefcase class="w-3.5 h-3.5 text-brand-600" />
+            <span>اطلاعات صنفی و حرفه‌ای</span>
           </h4>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl flex items-start gap-3">
-              <Briefcase class="w-4 h-4 text-brand-600 mt-0.5 shrink-0" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl flex items-start gap-3">
+              <div class="p-2 rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-400 shrink-0">
+                <Briefcase class="w-4 h-4" />
+              </div>
               <div>
                 <span class="text-slate-400 block text-[11px]">نوع عضویت:</span>
                 <span class="font-bold text-slate-800 dark:text-slate-200 text-sm">
@@ -629,8 +814,10 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
               </div>
             </div>
 
-            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl flex items-start gap-3">
-              <Layers class="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl flex items-start gap-3">
+              <div class="p-2 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 shrink-0">
+                <Layers class="w-4 h-4" />
+              </div>
               <div>
                 <span class="text-slate-400 block text-[11px]">رسته تخصصی:</span>
                 <span class="font-bold text-slate-800 dark:text-slate-200 text-sm">
@@ -639,8 +826,10 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
               </div>
             </div>
 
-            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl flex items-start gap-3">
-              <Award class="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl flex items-start gap-3">
+              <div class="p-2 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 shrink-0">
+                <Award class="w-4 h-4" />
+              </div>
               <div>
                 <span class="text-slate-400 block text-[11px]">رتبه صنفی:</span>
                 <span class="font-bold text-slate-800 dark:text-slate-200 text-sm">
@@ -649,8 +838,10 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
               </div>
             </div>
 
-            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl flex items-start gap-3">
-              <Calendar class="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 rounded-xl flex items-start gap-3">
+              <div class="p-2 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400 shrink-0">
+                <Calendar class="w-4 h-4" />
+              </div>
               <div>
                 <span class="text-slate-400 block text-[11px]">ماهیت عضویت:</span>
                 <span class="font-bold text-slate-800 dark:text-slate-200 text-sm">
@@ -661,74 +852,93 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
           </div>
         </div>
 
-        <!-- Academic Qualification -->
+        <!-- Academic Qualification Overview -->
         <div>
-          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-            اطلاعات تحصیلی و مدرک دانشگاهی
+          <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <GraduationCap class="w-3.5 h-3.5 text-rose-600" />
+            <span>اطلاعات تحصیلی و مدرک دانشگاهی ملاک</span>
           </h4>
 
-          <div v-if="memberAcademicQualification" class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-3">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <GraduationCap class="w-4 h-4 text-rose-600" />
-                <span class="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                  {{ lookupsStore.getAcademicFieldTitle(memberAcademicQualification.academicField) }}
-                </span>
+          <div v-if="memberAcademicQualification" class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/70 dark:border-slate-800 space-y-3 shadow-2xs">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 flex items-center justify-center font-bold">
+                  <GraduationCap class="w-5 h-5" />
+                </div>
+                <div>
+                  <span class="font-black text-slate-900 dark:text-slate-100 text-sm sm:text-base">
+                    {{ memberAcademicQualification.title || lookupsStore.getAcademicFieldTitle(memberAcademicQualification.academicField) }}
+                  </span>
+                  <p class="text-xs text-slate-500 dark:text-slate-400">
+                    رشته: {{ lookupsStore.getAcademicFieldTitle(memberAcademicQualification.academicField) }}
+                  </p>
+                </div>
               </div>
-              <Badge variant="brand">
-                {{ lookupsStore.getDegreeLevelTitle(memberAcademicQualification.degreeLevel) }}
-              </Badge>
+
+              <div class="flex items-center gap-2">
+                <Badge variant="purple" size="md">
+                  {{ lookupsStore.getDegreeLevelTitle(memberAcademicQualification.degreeLevel) }}
+                </Badge>
+                <Badge
+                  v-if="(memberAcademicQualification as any).verificationStatus === 'APPROVED'"
+                  variant="emerald"
+                  size="sm"
+                >
+                  تائید شده
+                </Badge>
+              </div>
             </div>
 
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs pt-2 border-t border-slate-200/40 dark:border-slate-700/40">
-              <div>
-                <span class="text-slate-400 block text-[11px]">دانشگاه:</span>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
+              <div class="p-2.5 bg-white dark:bg-slate-900/60 rounded-xl">
+                <span class="text-slate-400 block text-[11px] mb-0.5">دانشگاه / موسسه:</span>
                 <span class="font-bold text-slate-700 dark:text-slate-300">
                   {{ memberAcademicQualification.institution || '—' }}
                 </span>
               </div>
-              <div>
-                <span class="text-slate-400 block text-[11px]">شهر محل تحصیل:</span>
+              <div class="p-2.5 bg-white dark:bg-slate-900/60 rounded-xl">
+                <span class="text-slate-400 block text-[11px] mb-0.5">شهر محل تحصیل:</span>
                 <span class="font-bold text-slate-700 dark:text-slate-300">
                   {{ memberAcademicQualification.city || '—' }}
                 </span>
               </div>
-              <div>
-                <span class="text-slate-400 block text-[11px]">معدل:</span>
+              <div class="p-2.5 bg-white dark:bg-slate-900/60 rounded-xl">
+                <span class="text-slate-400 block text-[11px] mb-0.5">معدل:</span>
                 <span v-if="memberAcademicQualification.gpa !== undefined && memberAcademicQualification.gpa !== null" class="font-bold text-amber-600 dark:text-amber-400 tabular-nums">
-                  {{ toPersianDigits(memberAcademicQualification.gpa) }}
+                  {{ toPersianDigits(memberAcademicQualification.gpa) }} از ۲۰
                 </span>
-                <span v-else class="text-slate-400">—</span>
+                <span v-else class="text-slate-400 font-normal">ثبت نشده</span>
               </div>
-              <div>
-                <span class="text-slate-400 block text-[11px]">سال شروع تحصیل:</span>
+              <div class="p-2.5 bg-white dark:bg-slate-900/60 rounded-xl">
+                <span class="text-slate-400 block text-[11px] mb-0.5">دوره تحصیلی:</span>
                 <span class="font-bold text-slate-700 dark:text-slate-300 tabular-nums">
-                  {{ memberAcademicQualification.startYear ? toPersianDigits(memberAcademicQualification.startYear) : '—' }}
-                </span>
-              </div>
-              <div>
-                <span class="text-slate-400 block text-[11px]">سال فارغ‌التحصیلی:</span>
-                <span class="font-bold text-slate-700 dark:text-slate-300 tabular-nums">
-                  {{ memberAcademicQualification.graduationYear ? toPersianDigits(memberAcademicQualification.graduationYear) : '—' }}
+                  <template v-if="memberAcademicQualification.startYear && memberAcademicQualification.graduationYear">
+                    {{ toPersianDigits(memberAcademicQualification.startYear) }} الی {{ toPersianDigits(memberAcademicQualification.graduationYear) }}
+                  </template>
+                  <template v-else-if="memberAcademicQualification.graduationYear">
+                    فارغ‌التحصیل {{ toPersianDigits(memberAcademicQualification.graduationYear) }}
+                  </template>
+                  <template v-else>—</template>
                 </span>
               </div>
             </div>
 
             <div v-if="memberAcademicQualification.description" class="pt-2 border-t border-slate-200/40 dark:border-slate-700/40 text-xs">
-              <span class="text-slate-400 block text-[11px] mb-0.5">توضیحات:</span>
-              <p class="text-slate-700 dark:text-slate-300">{{ memberAcademicQualification.description }}</p>
+              <span class="text-slate-400 block text-[11px] mb-0.5">توضیحات مدرک:</span>
+              <p class="text-slate-700 dark:text-slate-300 leading-relaxed">{{ memberAcademicQualification.description }}</p>
             </div>
 
             <div class="pt-2 border-t border-slate-200/40 dark:border-slate-700/40 flex items-center justify-between text-xs">
-              <span class="text-[11px] text-slate-400">
-                ملاک پرونده: آخرین مدرک تحصیلی
+              <span class="text-[11px] text-slate-400 flex items-center gap-1">
+                <ShieldCheck class="w-3.5 h-3.5 text-emerald-500" />
+                ملاک رتبه‌بندی پرونده: آخرین مقطع تحصیلی تائید شده
               </span>
               <button
                 type="button"
                 class="font-bold text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1 cursor-pointer"
                 @click="activeTab = 'qualifications'"
               >
-                <span>مدیریت و بررسی تمام مدارک عضو</span>
+                <span>مشاهده و مدیریت همه مدارک عضو</span>
                 <span v-if="member.academicQualifications?.length" class="tabular-nums">
                   ({{ toPersianDigits(member.academicQualifications.length) }})
                 </span>
@@ -736,22 +946,25 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
             </div>
           </div>
 
-          <div v-else class="p-3 bg-slate-50 dark:bg-slate-800/30 rounded-xl text-xs flex items-center justify-between">
-            <span class="text-slate-400">مدرک دانشگاهی برای این عضو ثبت نشده است.</span>
+          <div v-else class="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-xs flex items-center justify-between">
+            <span class="text-slate-400">مدرک دانشگاهی برای این پرونده ثبت نشده است.</span>
             <button
               type="button"
               class="text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline cursor-pointer"
               @click="activeTab = 'qualifications'"
             >
-              + ثبت مدرک تحصیلی
+              + ثبت و بارگذاری مدرک تحصیلی
             </button>
           </div>
         </div>
 
         <!-- Notes if any -->
-        <div v-if="member.notes" class="p-4 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-xl text-xs">
-          <span class="font-bold text-amber-800 dark:text-amber-300 block mb-1">یادداشت پرونده:</span>
-          <p class="text-amber-900 dark:text-amber-200 leading-relaxed">
+        <div v-if="member.notes" class="p-4 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900 rounded-2xl text-xs space-y-1">
+          <span class="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+            <FileText class="w-3.5 h-3.5" />
+            یادداشت و سوابق پرونده:
+          </span>
+          <p class="text-amber-900 dark:text-amber-200 leading-relaxed pt-1">
             {{ member.notes }}
           </p>
         </div>
@@ -775,18 +988,18 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
           />
         </div>
 
-        <div v-else class="space-y-3">
+        <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
           <div
             v-for="addr in addresses"
             :key="addr._id"
             :class="[
-              'p-4 rounded-2xl border transition-all duration-150 flex items-start justify-between gap-4 text-xs',
+              'p-4 rounded-2xl border transition-all duration-150 flex flex-col justify-between gap-3 text-xs',
               addr.isPrimary
-                ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/80 shadow-xs'
-                : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800',
+                ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800 shadow-2xs'
+                : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 hover:border-slate-300',
             ]"
           >
-            <div class="space-y-1.5 flex-1">
+            <div class="space-y-2 flex-1">
               <div class="flex flex-wrap items-center gap-2">
                 <span v-if="addr.isPrimary" class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] inline-flex items-center gap-1">
                   <Star class="w-3 h-3 fill-current" />
@@ -800,35 +1013,47 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
                 <Badge variant="purple">
                   {{ lookupsStore.getProvinceTitle(addr.province) }} &bull; {{ lookupsStore.getCityTitle(addr.city) }}
                 </Badge>
-
-                <span v-if="addr.plaque" class="text-slate-500 dark:text-slate-400">
-                  پلاک: <strong class="text-slate-700 dark:text-slate-300 tabular-nums">{{ toPersianDigits(addr.plaque) }}</strong>
-                </span>
-
-                <span class="text-slate-400 mr-2">
-                  کد پستی: <strong class="text-slate-700 dark:text-slate-300 tabular-nums" dir="ltr">{{ toPersianDigits(addr.postalCode) || '—' }}</strong>
-                </span>
               </div>
 
               <p class="text-slate-800 dark:text-slate-200 text-sm font-medium leading-relaxed pt-1">
                 {{ addr.address }}
               </p>
+
+              <div class="flex items-center gap-3 text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
+                <span v-if="addr.plaque">
+                  پلاک: <strong class="text-slate-700 dark:text-slate-300 tabular-nums">{{ toPersianDigits(addr.plaque) }}</strong>
+                </span>
+
+                <span class="mr-auto inline-flex items-center gap-1">
+                  کد پستی: <strong class="text-slate-700 dark:text-slate-300 tabular-nums font-mono" dir="ltr">{{ toPersianDigits(addr.postalCode) || '—' }}</strong>
+                  <button
+                    v-if="addr.postalCode"
+                    type="button"
+                    class="text-slate-400 hover:text-brand-600 p-0.5"
+                    title="کپی کد پستی"
+                    @click="copyToClipboard(addr.postalCode, 'کد پستی کپی شد')"
+                  >
+                    <Copy class="w-3 h-3" />
+                  </button>
+                </span>
+              </div>
             </div>
 
-            <div class="flex items-center gap-1 shrink-0">
+            <div class="flex items-center justify-end gap-1 shrink-0 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
               <button
                 v-if="!addr.isPrimary"
                 type="button"
-                class="p-2 text-slate-400 hover:text-amber-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                class="px-2.5 py-1 text-slate-600 hover:text-amber-600 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40 text-[11px] font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                 title="تنظیم به عنوان نشانی اصلی"
                 @click="handleSetPrimaryAddress(addr)"
               >
-                <Star class="w-4 h-4" />
+                <Star class="w-3.5 h-3.5" />
+                اصلی کردن
               </button>
 
               <button
                 type="button"
-                class="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                class="p-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg hover:bg-slate-200/60 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                 title="ویرایش نشانی"
                 @click="openEditAddressModal(addr)"
               >
@@ -837,7 +1062,7 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
 
               <button
                 type="button"
-                class="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                class="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
                 title="حذف نشانی"
                 @click="addressToDelete = addr._id"
               >
@@ -866,24 +1091,24 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
           />
         </div>
 
-        <div v-else class="space-y-3">
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           <div
             v-for="phone in telephones"
             :key="phone._id"
             :class="[
               'p-4 rounded-2xl border transition-all duration-150 flex items-center justify-between gap-4 text-xs',
               phone.isPrimary
-                ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/80 shadow-xs'
-                : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800',
+                ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800 shadow-2xs'
+                : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 hover:border-slate-300',
             ]"
           >
             <div class="flex items-center gap-3">
               <div
                 :class="[
-                  'p-2.5 rounded-xl',
+                  'p-2.5 rounded-xl shrink-0',
                   phone.isPrimary
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
                 ]"
               >
                 <Phone class="w-4 h-4" />
@@ -891,7 +1116,7 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
 
               <div>
                 <div class="flex items-center gap-2">
-                  <span class="font-bold text-sm text-slate-900 dark:text-slate-100 tabular-nums" dir="ltr">
+                  <span class="font-bold text-sm text-slate-900 dark:text-slate-100 tabular-nums font-mono" dir="ltr">
                     <span v-if="phone.areaCode && phone.phoneType !== 'MOBILE'">({{ phone.areaCode }}) </span>
                     {{ toPersianDigits(phone.phoneNumber) }}
                   </span>
@@ -942,7 +1167,7 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
                 title="حذف شماره"
                 @click="phoneToDelete = phone._id"
               >
-                <Trash2 class="w-4 h-4" />
+                <Trash2 class="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -952,7 +1177,7 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
       <!-- Tab 4: Academic Qualifications -->
       <div v-else-if="activeTab === 'qualifications'" class="space-y-4">
         <MemberQualificationsTab
-          v-if="member._id"
+          v-if="member && member._id"
           :member-id="member._id"
           :member="member"
           @updated="loadMemberDetails(); emit('updated');"

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { lookupsApi } from '@/api';
+import { lookupsApi, membersApi, companiesApi } from '@/api';
 import { useLookupsStore, useNotificationStore } from '@/stores';
 import type {
   IAcademicQualification,
   QualificationVerificationStatus,
+  Member,
+  Company,
 } from '@/types';
 import {
   Button,
@@ -37,6 +39,10 @@ const notificationStore = useNotificationStore();
 
 const qualificationsList = ref<IAcademicQualification[]>([]);
 const isLoading = ref(false);
+
+// Cache maps for populated member and company details
+const membersMap = ref<Record<string, Member>>({});
+const companiesMap = ref<Record<string, Company>>({});
 
 // Helper to normalize verification status (legacy/empty statuses default to PENDING)
 function normalizeStatus(status?: string): QualificationVerificationStatus {
@@ -88,8 +94,69 @@ onMounted(async () => {
   await Promise.allSettled([
     lookupsStore.fetchAllLookups(),
     loadQualifications(),
+    loadMembersAndCompanies(),
   ]);
 });
+
+async function loadMembersAndCompanies() {
+  try {
+    const [membersRes, companiesRes] = await Promise.allSettled([
+      membersApi.getMembers({ limit: 500 }),
+      companiesApi.getCompanies({ limit: 500 }),
+    ]);
+
+    if (membersRes.status === 'fulfilled' && membersRes.value?.success && Array.isArray(membersRes.value.data)) {
+      for (const m of membersRes.value.data) {
+        if (m?._id) membersMap.value[m._id] = m;
+      }
+    }
+
+    if (companiesRes.status === 'fulfilled' && companiesRes.value?.success && Array.isArray(companiesRes.value.data)) {
+      for (const c of companiesRes.value.data) {
+        if (c?._id) companiesMap.value[c._id] = c;
+      }
+    }
+  } catch {
+    // Ignore error
+  }
+}
+
+async function resolveMissingMembers(items: IAcademicQualification[]) {
+  const missingMemberIds = new Set<string>();
+  for (const q of items) {
+    const rawId = typeof q.memberId === 'object' && q.memberId ? q.memberId._id : q.memberId;
+    if (typeof rawId === 'string' && rawId && !membersMap.value[rawId]) {
+      missingMemberIds.add(rawId);
+    }
+  }
+
+  if (missingMemberIds.size > 0) {
+    await Promise.allSettled(
+      Array.from(missingMemberIds).map(async (id) => {
+        try {
+          const res = await membersApi.getMemberById(id);
+          if (res.success && res.data) {
+            membersMap.value[id] = res.data;
+            const cInfo = res.data.companyInformation;
+            const cId = typeof cInfo === 'object' && cInfo ? cInfo._id : cInfo;
+            if (typeof cId === 'string' && cId && !companiesMap.value[cId]) {
+              try {
+                const cRes = await companiesApi.getCompanyById(cId);
+                if (cRes.success && cRes.data) {
+                  companiesMap.value[cId] = cRes.data;
+                }
+              } catch {
+                // Ignore
+              }
+            }
+          }
+        } catch {
+          // Ignore
+        }
+      })
+    );
+  }
+}
 
 async function loadQualifications() {
   isLoading.value = true;
@@ -103,6 +170,8 @@ async function loadQualifications() {
     } else {
       qualificationsList.value = [];
     }
+    // Resolve any member details if only IDs were returned
+    resolveMissingMembers(qualificationsList.value);
   } catch (err) {
     if (lookupsStore.academicQualifications && lookupsStore.academicQualifications.length > 0) {
       qualificationsList.value = lookupsStore.academicQualifications as any;
@@ -132,7 +201,7 @@ const filteredQualifications = computed(() => {
     });
   }
 
-  // Filter by search string
+  // Filter by search string (matches degree, university, city, person name, company name, member code)
   const qStr = search.value.trim().toLowerCase();
   if (qStr) {
     list = list.filter((item) => {
@@ -142,15 +211,14 @@ const filteredQualifications = computed(() => {
       const fieldTitle = displayFieldTitle(item.academicField).toLowerCase();
       const degreeTitle = displayDegreeTitle(item.degreeLevel).toLowerCase();
 
-      let memberMatch = false;
-      if (item.memberId && typeof item.memberId === 'object') {
-        const m = item.memberId;
-        const name = `${m.firstName || ''} ${m.lastName || ''}`.toLowerCase();
-        memberMatch =
-          name.includes(qStr) ||
-          Boolean(m.memberCode?.toLowerCase().includes(qStr)) ||
-          Boolean(m.nationalCode?.toLowerCase().includes(qStr));
-      }
+      const memberInfo = getMemberInfo(item.memberId, item);
+      const memberMatch =
+        memberInfo.displayName.toLowerCase().includes(qStr) ||
+        memberInfo.secondaryName.toLowerCase().includes(qStr) ||
+        memberInfo.personName.toLowerCase().includes(qStr) ||
+        memberInfo.companyName.toLowerCase().includes(qStr) ||
+        Boolean(memberInfo.code?.toLowerCase().includes(qStr)) ||
+        Boolean(memberInfo.nationalCode?.toLowerCase().includes(qStr));
 
       return (
         Boolean(titleMatch) ||
@@ -232,20 +300,95 @@ function displayFieldTitle(field: any): string {
   return lookupsStore.getAcademicFieldTitle(field);
 }
 
-function getMemberInfo(memberIdProp: any): { id: string; name: string; code: string; nationalCode: string } {
-  if (!memberIdProp) {
-    return { id: '', name: 'عضو صنف', code: '', nationalCode: '' };
+interface ResolvedMemberInfo {
+  id: string;
+  personName: string;
+  companyName: string;
+  displayName: string;
+  secondaryName: string;
+  code: string;
+  nationalCode: string;
+  isCompany: boolean;
+}
+
+function getMemberInfo(memberIdProp: any, item?: IAcademicQualification | null): ResolvedMemberInfo {
+  const rawId = typeof memberIdProp === 'object' && memberIdProp ? memberIdProp._id : memberIdProp;
+  const id = typeof rawId === 'string' ? rawId : '';
+
+  // Candidate member object from prop or cache
+  const cachedMember = id ? membersMap.value[id] : null;
+  const m = (typeof memberIdProp === 'object' && memberIdProp ? memberIdProp : cachedMember) || {};
+
+  // 1. Person Name
+  const first = m.firstName || cachedMember?.firstName || '';
+  const last = m.lastName || cachedMember?.lastName || '';
+  let personName = `${first} ${last}`.trim();
+  if (!personName && (m.fullName || (cachedMember as any)?.fullName)) {
+    personName = m.fullName || (cachedMember as any)?.fullName || '';
   }
-  if (typeof memberIdProp === 'object') {
-    const name = `${memberIdProp.firstName || ''} ${memberIdProp.lastName || ''}`.trim() || 'عضو صنف';
-    return {
-      id: memberIdProp._id || '',
-      name,
-      code: memberIdProp.memberCode || '',
-      nationalCode: memberIdProp.nationalCode || '',
-    };
+
+  // 2. Company Name
+  let companyName = '';
+
+  // Direct companyName on member or item
+  if (m.companyName || (cachedMember as any)?.companyName) {
+    companyName = m.companyName || (cachedMember as any)?.companyName || '';
+  } else if (item && (item as any).companyName) {
+    companyName = (item as any).companyName;
   }
-  return { id: String(memberIdProp), name: 'عضو صنف', code: '', nationalCode: '' };
+
+  // Check companyInformation on m or cachedMember
+  const cInfo = m.companyInformation || cachedMember?.companyInformation;
+  if (!companyName && cInfo) {
+    if (typeof cInfo === 'object' && cInfo.title) {
+      companyName = cInfo.title;
+    } else if (typeof cInfo === 'string' && companiesMap.value[cInfo]) {
+      companyName = companiesMap.value[cInfo].title;
+    }
+  }
+
+  // Check direct company property on item or m
+  if (!companyName && (item as any)?.company) {
+    const directC = (item as any).company;
+    companyName = typeof directC === 'object' && directC?.title ? directC.title : String(directC || '');
+  }
+
+  // 3. Member Code & National Code
+  const code = m.memberCode || cachedMember?.memberCode || '';
+  const nationalCode = m.nationalCode || cachedMember?.nationalCode || '';
+
+  // 4. Determine primary displayName and secondaryName
+  const isCompanyOnly = Boolean(companyName && !personName);
+  let displayName = '';
+  let secondaryName = '';
+
+  if (personName && companyName) {
+    displayName = personName;
+    secondaryName = companyName;
+  } else if (personName) {
+    displayName = personName;
+    secondaryName = '';
+  } else if (companyName) {
+    displayName = companyName;
+    secondaryName = '';
+  } else if (code) {
+    displayName = `عضو صنف (${code})`;
+    secondaryName = '';
+  } else {
+    displayName = 'عضو صنف';
+    secondaryName = '';
+  }
+
+  return {
+    id,
+    personName,
+    companyName,
+    displayName,
+    secondaryName,
+    code,
+    nationalCode,
+    isCompany: isCompanyOnly,
+  };
 }
 
 function getStatusBadgeClasses(status?: string): string {
@@ -472,7 +615,7 @@ function getStatusLabel(status?: string): string {
           <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-bold">
             <tr>
               <th scope="col" class="py-3 px-4 w-12 text-center">#</th>
-              <th scope="col" class="py-3 px-4">مشخصات عضو</th>
+              <th scope="col" class="py-3 px-4">مشخصات عضو / شرکت</th>
               <th scope="col" class="py-3 px-4">عنوان و رشته تحصیلی</th>
               <th scope="col" class="py-3 px-4">دانشگاه و محل تحصیل</th>
               <th scope="col" class="py-3 px-4">دوره و معدل</th>
@@ -492,27 +635,58 @@ function getStatusLabel(status?: string): string {
                 {{ toPersianDigits(idx + 1) }}
               </td>
 
-              <!-- Member Information -->
+              <!-- Member & Company Information -->
               <td class="py-3.5 px-4">
                 <div
-                  v-if="item.memberId"
-                  class="flex items-center gap-2.5 cursor-pointer group"
-                  @click="openMemberProfile(getMemberInfo(item.memberId).id)"
+                  v-if="getMemberInfo(item.memberId, item).id || getMemberInfo(item.memberId, item).displayName"
+                  class="flex items-start gap-2.5 cursor-pointer group"
+                  @click="openMemberProfile(getMemberInfo(item.memberId, item).id)"
                 >
-                  <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400 font-bold flex items-center justify-center shrink-0 text-xs">
-                    {{ getMemberInfo(item.memberId).name[0] || 'ع' }}
+                  <!-- Avatar Icon / Initial -->
+                  <div
+                    :class="[
+                      'w-9 h-9 rounded-xl font-bold flex items-center justify-center shrink-0 text-xs shadow-2xs mt-0.5 transition-colors',
+                      getMemberInfo(item.memberId, item).isCompany && !getMemberInfo(item.memberId, item).personName
+                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/60'
+                        : 'bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400 group-hover:bg-purple-100 dark:group-hover:bg-purple-900/60'
+                    ]"
+                  >
+                    <Building2
+                      v-if="getMemberInfo(item.memberId, item).isCompany && !getMemberInfo(item.memberId, item).personName"
+                      class="w-4 h-4"
+                    />
+                    <span v-else>
+                      {{ getMemberInfo(item.memberId, item).displayName[0] || 'ع' }}
+                    </span>
                   </div>
-                  <div>
+
+                  <!-- Details -->
+                  <div class="space-y-0.5">
+                    <!-- Main Name (Person or Company) -->
                     <div class="font-bold text-slate-900 dark:text-slate-100 group-hover:text-brand-600 transition flex items-center gap-1.5">
-                      <span>{{ getMemberInfo(item.memberId).name }}</span>
-                      <ExternalLink class="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition" />
+                      <span>{{ getMemberInfo(item.memberId, item).displayName }}</span>
+                      <ExternalLink class="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition shrink-0" />
                     </div>
-                    <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
-                      <span v-if="getMemberInfo(item.memberId).code" class="bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 font-semibold px-1.5 py-0.2 rounded tabular-nums">
-                        کد: {{ toPersianDigits(getMemberInfo(item.memberId).code) }}
+
+                    <!-- Secondary Name (Affiliated Company or Person) -->
+                    <div
+                      v-if="getMemberInfo(item.memberId, item).secondaryName"
+                      class="text-[11px] text-blue-600 dark:text-blue-400 flex items-center gap-1 font-medium"
+                    >
+                      <Building2 class="w-3 h-3 shrink-0" />
+                      <span class="truncate max-w-[200px]">{{ getMemberInfo(item.memberId, item).secondaryName }}</span>
+                    </div>
+
+                    <!-- Codes: Member Code & National Code -->
+                    <div class="flex items-center gap-2 text-[11px] text-slate-400 pt-0.5">
+                      <span
+                        v-if="getMemberInfo(item.memberId, item).code"
+                        class="bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 font-semibold px-1.5 py-0.2 rounded tabular-nums"
+                      >
+                        کد: {{ toPersianDigits(getMemberInfo(item.memberId, item).code) }}
                       </span>
-                      <span v-if="getMemberInfo(item.memberId).nationalCode" class="tabular-nums">
-                        کد ملی: {{ toPersianDigits(getMemberInfo(item.memberId).nationalCode) }}
+                      <span v-if="getMemberInfo(item.memberId, item).nationalCode" class="tabular-nums">
+                        کد ملی: {{ toPersianDigits(getMemberInfo(item.memberId, item).nationalCode) }}
                       </span>
                     </div>
                   </div>
@@ -648,8 +822,8 @@ function getStatusLabel(status?: string): string {
     <VerifyQualificationModal
       v-model:open="isVerifyModalOpen"
       :qualification="activeQualificationForVerify"
-      :member-id="getMemberInfo(activeQualificationForVerify?.memberId).id"
-      :member-name="getMemberInfo(activeQualificationForVerify?.memberId).name"
+      :member-id="getMemberInfo(activeQualificationForVerify?.memberId, activeQualificationForVerify).id"
+      :member-name="getMemberInfo(activeQualificationForVerify?.memberId, activeQualificationForVerify).secondaryName ? `${getMemberInfo(activeQualificationForVerify?.memberId, activeQualificationForVerify).displayName} (${getMemberInfo(activeQualificationForVerify?.memberId, activeQualificationForVerify).secondaryName})` : getMemberInfo(activeQualificationForVerify?.memberId, activeQualificationForVerify).displayName"
       @verified="handleVerified"
     />
 
