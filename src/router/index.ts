@@ -111,6 +111,20 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'members/qualifications',
+        name: 'MemberQualificationsDesk',
+        component: () => import('@/views/members/MemberQualificationsDeskView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'کارتابل بررسی مدارک تحصیلی اعضا',
+          permission: 'members:read',
+        },
+      },
+      {
+        path: 'members/academic-qualifications',
+        redirect: '/admin/members/qualifications',
+      },
+      {
         path: 'companies',
         name: 'Companies',
         component: () => import('@/views/companies/CompaniesView.vue'),

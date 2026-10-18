@@ -8,6 +8,7 @@ import type {
   NatureOfMembership,
   AcademicQualification,
 } from './lookups';
+import type { IAcademicQualification } from './academic-qualification.types';
 import type { Company } from './company';
 
 export type MemberStatus =
@@ -84,8 +85,8 @@ export interface Member {
   membershipTypeId: string | MembershipType;
   specializationId: string | Specialization;
   rankId?: string | Rank;
-  latestAcademicQualifications?: string | AcademicQualification;
-  academicQualifications?: AcademicQualification[];
+  latestAcademicQualifications?: string | AcademicQualification | IAcademicQualification;
+  academicQualifications?: (AcademicQualification | IAcademicQualification)[];
   natureOfMembership: string | NatureOfMembership;
   companyInformation?: string | Company;
   membershipDate?: string;

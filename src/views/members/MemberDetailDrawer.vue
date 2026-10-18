@@ -46,11 +46,12 @@ import {
 } from 'lucide-vue-next';
 import { extractErrorMessage } from '@/utils/errors';
 import { getStoredMemberQualifications } from '@/utils/qualifications';
+import MemberQualificationsTab from './components/MemberQualificationsTab.vue';
 
 interface Props {
   open: boolean;
   memberId: string | null;
-  initialTab?: 'info' | 'addresses' | 'telephones';
+  initialTab?: 'info' | 'addresses' | 'telephones' | 'qualifications';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -70,7 +71,7 @@ const notificationStore = useNotificationStore();
 
 const member = ref<Member | null>(null);
 const isLoading = ref(false);
-const activeTab = ref<'info' | 'addresses' | 'telephones'>(props.initialTab);
+const activeTab = ref<'info' | 'addresses' | 'telephones' | 'qualifications'>(props.initialTab);
 
 // Address management state
 const addresses = ref<MemberAddress[]>([]);
@@ -536,6 +537,26 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
             {{ toPersianDigits(telephones.length) }}
           </span>
         </button>
+
+        <button
+          type="button"
+          :class="[
+            'flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors cursor-pointer',
+            activeTab === 'qualifications'
+              ? 'border-brand-600 text-brand-600 dark:text-brand-400'
+              : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200',
+          ]"
+          @click="activeTab = 'qualifications'"
+        >
+          <GraduationCap class="w-4 h-4" />
+          مدارک و تحصیلات
+          <span
+            v-if="member.academicQualifications?.length"
+            class="px-1.5 py-0.2 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] tabular-nums"
+          >
+            {{ toPersianDigits(member.academicQualifications.length) }}
+          </span>
+        </button>
       </div>
 
       <!-- Tab 1: Info -->
@@ -697,10 +718,33 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
               <span class="text-slate-400 block text-[11px] mb-0.5">توضیحات:</span>
               <p class="text-slate-700 dark:text-slate-300">{{ memberAcademicQualification.description }}</p>
             </div>
+
+            <div class="pt-2 border-t border-slate-200/40 dark:border-slate-700/40 flex items-center justify-between text-xs">
+              <span class="text-[11px] text-slate-400">
+                ملاک پرونده: آخرین مدرک تحصیلی
+              </span>
+              <button
+                type="button"
+                class="font-bold text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1 cursor-pointer"
+                @click="activeTab = 'qualifications'"
+              >
+                <span>مدیریت و بررسی تمام مدارک عضو</span>
+                <span v-if="member.academicQualifications?.length" class="tabular-nums">
+                  ({{ toPersianDigits(member.academicQualifications.length) }})
+                </span>
+              </button>
+            </div>
           </div>
 
-          <div v-else class="p-3 bg-slate-50 dark:bg-slate-800/30 rounded-xl text-xs text-slate-400">
-            مدرک دانشگاهی برای این عضو ثبت نشده است.
+          <div v-else class="p-3 bg-slate-50 dark:bg-slate-800/30 rounded-xl text-xs flex items-center justify-between">
+            <span class="text-slate-400">مدرک دانشگاهی برای این عضو ثبت نشده است.</span>
+            <button
+              type="button"
+              class="text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline cursor-pointer"
+              @click="activeTab = 'qualifications'"
+            >
+              + ثبت مدرک تحصیلی
+            </button>
           </div>
         </div>
 
@@ -903,6 +947,16 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Tab 4: Academic Qualifications -->
+      <div v-else-if="activeTab === 'qualifications'" class="space-y-4">
+        <MemberQualificationsTab
+          v-if="member._id"
+          :member-id="member._id"
+          :member="member"
+          @updated="loadMemberDetails(); emit('updated');"
+        />
       </div>
     </div>
 

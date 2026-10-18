@@ -1,3 +1,11 @@
+import type {
+  QualificationVerificationStatus,
+  IAdminSummary,
+  IQualificationVerificationLog,
+  IAcademicFieldSummary,
+  IDegreeLevelSummary,
+} from './academic-qualification.types';
+
 export interface BaseLookup {
   _id: string;
   title: string;
@@ -30,9 +38,9 @@ export interface DegreeLevel extends BaseLookup {
 }
 
 export interface AcademicQualification extends BaseLookup {
-  memberId?: string;
-  academicField?: string | AcademicField;
-  degreeLevel?: string | DegreeLevel;
+  memberId?: string | any;
+  academicField?: string | AcademicField | IAcademicFieldSummary;
+  degreeLevel?: string | DegreeLevel | IDegreeLevelSummary;
   institution?: string;
   city?: string;
   startYear?: number;
@@ -40,6 +48,12 @@ export interface AcademicQualification extends BaseLookup {
   gpa?: number | string;
   description?: string;
   isLatest?: boolean;
+  verificationStatus?: QualificationVerificationStatus;
+  verifiedBy?: IAdminSummary | string | null;
+  verifiedAt?: string | null;
+  rejectionReason?: string;
+  verificationLogs?: IQualificationVerificationLog[];
+  isActive?: boolean;
 }
 
 export interface AddressType extends BaseLookup {

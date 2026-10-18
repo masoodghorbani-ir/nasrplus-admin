@@ -13,6 +13,10 @@ import type {
   IImportConfirmPayload,
   IImportExecutionResponse,
   IImportValidationResponse,
+  IAcademicQualification,
+  ICreateAcademicQualificationPayload,
+  IUpdateAcademicQualificationPayload,
+  IVerifyQualificationPayload,
 } from '@/types';
 
 export const membersApi = {
@@ -128,6 +132,59 @@ export const membersApi = {
   async confirmImport(payload: IImportConfirmPayload): Promise<ApiResponse<IImportExecutionResponse>> {
     const response = await apiClient.post<ApiResponse<IImportExecutionResponse>>(
       '/members/import/confirm',
+      payload
+    );
+    return response.data;
+  },
+
+  // Member Academic Qualifications sub-resource
+  async getMemberQualifications(memberId: string): Promise<ApiResponse<IAcademicQualification[]>> {
+    const response = await apiClient.get<ApiResponse<IAcademicQualification[]>>(
+      `/members/${memberId}/academic-qualifications`
+    );
+    return response.data;
+  },
+
+  async addMemberQualification(
+    memberId: string,
+    data: ICreateAcademicQualificationPayload
+  ): Promise<ApiResponse<IAcademicQualification>> {
+    const response = await apiClient.post<ApiResponse<IAcademicQualification>>(
+      `/members/${memberId}/academic-qualifications`,
+      data
+    );
+    return response.data;
+  },
+
+  async updateMemberQualification(
+    memberId: string,
+    qualificationId: string,
+    data: IUpdateAcademicQualificationPayload
+  ): Promise<ApiResponse<IAcademicQualification>> {
+    const response = await apiClient.put<ApiResponse<IAcademicQualification>>(
+      `/members/${memberId}/academic-qualifications/${qualificationId}`,
+      data
+    );
+    return response.data;
+  },
+
+  async deleteMemberQualification(
+    memberId: string,
+    qualificationId: string
+  ): Promise<ApiResponse<IAcademicQualification>> {
+    const response = await apiClient.delete<ApiResponse<IAcademicQualification>>(
+      `/members/${memberId}/academic-qualifications/${qualificationId}`
+    );
+    return response.data;
+  },
+
+  async verifyMemberQualification(
+    memberId: string,
+    qualificationId: string,
+    payload: IVerifyQualificationPayload
+  ): Promise<ApiResponse<IAcademicQualification>> {
+    const response = await apiClient.patch<ApiResponse<IAcademicQualification>>(
+      `/members/${memberId}/academic-qualifications/${qualificationId}/verify`,
       payload
     );
     return response.data;

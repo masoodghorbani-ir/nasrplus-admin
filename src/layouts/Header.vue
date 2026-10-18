@@ -55,32 +55,43 @@ function handleLogout() {
 
 <template>
   <header
-    class="h-16 px-4 sm:px-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 z-20 shrink-0 select-none"
+    class="h-16 px-3 sm:px-5 lg:px-6 xl:px-8 2xl:px-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20 shrink-0 select-none"
     dir="rtl"
   >
-    <!-- Left side (in RTL: Right side): Mobile toggle & Breadcrumbs -->
-    <div class="flex items-center gap-3">
-      <!-- Mobile sidebar hamburger button -->
-      <button
-        type="button"
-        class="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-        @click="themeStore.toggleMobileSidebar(true)"
-      >
-        <Menu class="w-5 h-5" />
-      </button>
+    <div class="w-full max-w-[1920px] mx-auto h-full flex items-center justify-between">
+      <!-- Left side (in RTL: Right side): Mobile toggle, Desktop toggle & Breadcrumbs -->
+      <div class="flex items-center gap-3">
+        <!-- Mobile sidebar hamburger button -->
+        <button
+          type="button"
+          class="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          @click="themeStore.toggleMobileSidebar(true)"
+        >
+          <Menu class="w-5 h-5" />
+        </button>
 
-      <!-- Breadcrumbs -->
-      <div class="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-200">
-        <span class="text-slate-400 dark:text-slate-500 hidden sm:inline">سامانه نصر پلاس</span>
-        <span class="text-slate-300 dark:text-slate-600 hidden sm:inline">/</span>
-        <h2 class="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base">
-          {{ breadcrumbTitle }}
-        </h2>
+        <!-- Desktop collapse/expand toggle button -->
+        <button
+          type="button"
+          class="hidden lg:flex p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          :title="themeStore.sidebarCollapsed ? 'باز کردن منوی کناری' : 'جمع کردن منوی کناری'"
+          @click="themeStore.toggleSidebar"
+        >
+          <Menu class="w-5 h-5" />
+        </button>
+
+        <!-- Breadcrumbs -->
+        <div class="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-200">
+          <span class="text-slate-400 dark:text-slate-500 hidden sm:inline">سامانه نصر پلاس</span>
+          <span class="text-slate-300 dark:text-slate-600 hidden sm:inline">/</span>
+          <h2 class="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base">
+            {{ breadcrumbTitle }}
+          </h2>
+        </div>
       </div>
-    </div>
 
-    <!-- Actions: Theme Switcher, User Menu -->
-    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Actions: Theme Switcher, User Menu -->
+      <div class="flex items-center gap-2 sm:gap-3">
       <!-- Dark / Light Mode Switcher -->
       <button
         type="button"
@@ -205,6 +216,7 @@ function handleLogout() {
         </Transition>
       </div>
     </div>
+  </div>
   </header>
 
   <!-- User Profile Details Modal -->

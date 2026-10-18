@@ -410,6 +410,16 @@ onMounted(async () => {
         </Button>
 
         <Button
+          variant="outline"
+          size="sm"
+          title="کارتابل متمرکز بررسی مدارک تحصیلی اعضا"
+          @click="router.push('/admin/members/qualifications')"
+        >
+          <GraduationCap class="w-4 h-4 ml-1 text-purple-600 dark:text-purple-400" />
+          کارتابل بررسی مدارک
+        </Button>
+
+        <Button
           variant="primary"
           size="sm"
           @click="openCreateModal"

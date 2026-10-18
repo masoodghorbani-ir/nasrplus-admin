@@ -8,6 +8,8 @@ import type {
   AcademicField,
   DegreeLevel,
   AcademicQualification,
+  IAcademicQualification,
+  IVerifyQualificationPayload,
   AddressType,
   Province,
   City,
@@ -123,12 +125,20 @@ export const lookupsApi = {
   },
 
   // Academic Qualifications
-  async getAcademicQualifications(): Promise<ApiResponse<AcademicQualification[]>> {
-    const res = await apiClient.get<ApiResponse<AcademicQualification[]>>('/lookups/academic-qualifications');
+  async getAcademicQualifications(params?: {
+    verificationStatus?: string;
+    memberId?: string;
+    degreeLevel?: string;
+    search?: string;
+  }): Promise<ApiResponse<IAcademicQualification[]>> {
+    const res = await apiClient.get<ApiResponse<IAcademicQualification[]>>(
+      '/lookups/academic-qualifications',
+      { params }
+    );
     return res.data;
   },
-  async getAcademicQualificationById(id: string): Promise<ApiResponse<AcademicQualification>> {
-    const res = await apiClient.get<ApiResponse<AcademicQualification>>(`/lookups/academic-qualifications/${id}`);
+  async getAcademicQualificationById(id: string): Promise<ApiResponse<IAcademicQualification>> {
+    const res = await apiClient.get<ApiResponse<IAcademicQualification>>(`/lookups/academic-qualifications/${id}`);
     return res.data;
   },
   async createAcademicQualification(data: {
@@ -156,6 +166,16 @@ export const lookupsApi = {
   },
   async deleteAcademicQualification(id: string): Promise<ApiResponse<void>> {
     const res = await apiClient.delete<ApiResponse<void>>(`/lookups/academic-qualifications/${id}`);
+    return res.data;
+  },
+  async verifyAcademicQualification(
+    id: string,
+    payload: IVerifyQualificationPayload
+  ): Promise<ApiResponse<IAcademicQualification>> {
+    const res = await apiClient.patch<ApiResponse<IAcademicQualification>>(
+      `/lookups/academic-qualifications/${id}/verify`,
+      payload
+    );
     return res.data;
   },
 
