@@ -59,6 +59,19 @@ td {
   font-family: var(--font-sans);
 }
 
+/* Typography refinements for Persian UI */
+:root {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Persian connected script requires natural spacing - prevent negative tracking from clipping ligatures */
+[dir="rtl"],
+.rtl {
+  letter-spacing: normal !important;
+}
+
 /* Prevent unwanted browser focus outlines on click while preserving keyboard accessibility */
 button:focus:not(:focus-visible) {
   outline: none;

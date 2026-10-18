@@ -34,10 +34,10 @@
             <Camera class="w-5 h-5" />
           </div>
           <div>
-            <h3 class="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100">
+            <h3 class="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100">
               مدیریت تصویر پرسنلی عضو
             </h3>
-            <p v-if="memberName" class="text-xs text-slate-500 dark:text-slate-400">
+            <p v-if="memberName" class="text-xs text-slate-500 dark:text-slate-400 font-normal">
               پرونده: {{ memberName }}
             </p>
           </div>
@@ -320,7 +320,7 @@
             v-if="cropSource"
             type="button"
             :disabled="isUploading"
-            class="px-5 py-2 text-xs font-black text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
+            class="px-5 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
             @click="executeCropAndUpload"
           >
             <Check v-if="!isUploading" class="w-4 h-4" />

@@ -6,3 +6,4 @@ export * from './lookups.api';
 export * from './admins.api';
 export * from './health.api';
 export * from './public.api';
+export * from './member-portal.api';

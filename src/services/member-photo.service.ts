@@ -7,9 +7,12 @@ const apiClient = axios.create({
   baseURL: BASE_URL,
 });
 
-// Attach Authorization header (supports both nasrplus_token and token keys)
+// Attach Authorization header (supports nasrplus_member_token, nasrplus_token, and token keys)
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('nasrplus_token') || localStorage.getItem('token');
+  const isProfile = typeof window !== 'undefined' && window.location.pathname.startsWith('/profile');
+  const memberToken = localStorage.getItem('nasrplus_member_token');
+  const adminToken = localStorage.getItem('nasrplus_token') || localStorage.getItem('token');
+  const token = isProfile ? (memberToken || adminToken) : (adminToken || memberToken);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

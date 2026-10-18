@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import { membersApi } from '@/api';
 import { useLookupsStore, useNotificationStore } from '@/stores';
 import type {
@@ -35,18 +35,32 @@ import {
   CheckCircle2,
   XCircle,
   FileText,
+  Lock,
 } from 'lucide-vue-next';
 
 interface Props {
   memberId: string;
   member?: Member | null;
   allowVerify?: boolean;
+  restrictEditTime?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   member: null,
   allowVerify: true,
+  restrictEditTime: undefined,
 });
+
+const isTimeRestricted = computed(() => {
+  if (props.restrictEditTime !== undefined) {
+    return props.restrictEditTime;
+  }
+  return !props.allowVerify;
+});
+
+const EDIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes in milliseconds
+const now = ref(Date.now());
+let timerInterval: ReturnType<typeof setInterval> | null = null;
 
 const emit = defineEmits<{
   (e: 'updated'): void;
@@ -83,7 +97,43 @@ onMounted(() => {
   if (props.memberId) {
     loadQualifications();
   }
+  timerInterval = setInterval(() => {
+    now.value = Date.now();
+  }, 1000);
 });
+
+onUnmounted(() => {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+});
+
+function getRemainingEditTimeMs(item: { createdAt?: string }): number {
+  if (!item?.createdAt) return 0;
+  const createdTime = new Date(item.createdAt).getTime();
+  if (isNaN(createdTime)) return 0;
+  const elapsed = now.value - createdTime;
+  const remaining = EDIT_WINDOW_MS - elapsed;
+  return Math.max(0, remaining);
+}
+
+function canEditOrDelete(item: { createdAt?: string }): boolean {
+  if (!isTimeRestricted.value) return true;
+  return getRemainingEditTimeMs(item) > 0;
+}
+
+function formatRemainingTime(item: { createdAt?: string }): string {
+  const ms = getRemainingEditTimeMs(item);
+  if (ms <= 0) return 'پایان مهلت';
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes > 0) {
+    return `${toPersianDigits(minutes)} دقیقه و ${toPersianDigits(seconds)} ثانیه`;
+  }
+  return `${toPersianDigits(seconds)} ثانیه`;
+}
 
 watch(
   () => props.memberId,
@@ -124,8 +174,20 @@ function openAddModal() {
 }
 
 function openEditModal(qual: IAcademicQualification) {
+  if (!canEditOrDelete(qual)) {
+    notificationStore.warning('ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد و این زمان به پایان رسیده است.');
+    return;
+  }
   editingQualification.value = qual;
   isFormModalOpen.value = true;
+}
+
+function confirmDeleteQual(qual: IAcademicQualification) {
+  if (!canEditOrDelete(qual)) {
+    notificationStore.warning('ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد و این زمان به پایان رسیده است.');
+    return;
+  }
+  itemToDelete.value = qual;
 }
 
 function openVerifyModal(qual: IAcademicQualification) {
@@ -213,6 +275,22 @@ function getStatusLabel(status: QualificationVerificationStatus): string {
 
 <template>
   <div class="space-y-4 text-right select-none" dir="rtl">
+    <!-- 10-Minute Policy Banner -->
+    <div
+      v-if="isTimeRestricted"
+      class="p-3.5 sm:p-4 rounded-2xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-900/60 flex items-center gap-3 text-amber-900 dark:text-amber-200 text-xs sm:text-sm font-bold shadow-xs"
+    >
+      <div class="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/70 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+        <Clock class="w-5 h-5" />
+      </div>
+      <div class="flex-1 min-w-0">
+        <span class="block">ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد</span>
+        <span class="block text-2xs sm:text-xs text-amber-700 dark:text-amber-400 font-normal mt-0.5">
+          پس از ثبت مدرک تحصیلی، حداکثر تا ۱۰ دقیقه فرصت ویرایش یا حذف آن را خواهید داشت.
+        </span>
+      </div>
+    </div>
+
     <!-- Header Section -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800">
       <div class="flex items-center gap-3">
@@ -308,6 +386,23 @@ function getStatusLabel(status: QualificationVerificationStatus): string {
               <Clock v-else class="w-3.5 h-3.5" />
               {{ getStatusLabel(qual.verificationStatus) }}
             </span>
+
+            <!-- 10-Minute Timer Badge (Member Portal Mode) -->
+            <span
+              v-if="isTimeRestricted"
+              :class="[
+                'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-2xs font-bold border transition-colors',
+                canEditOrDelete(qual)
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                  : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+              ]"
+              :title="canEditOrDelete(qual) ? 'ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد' : 'مهلت ۱۰ دقیقه‌ای ویرایش و حذف به پایان رسیده است'"
+            >
+              <Clock v-if="canEditOrDelete(qual)" class="w-3 h-3 text-amber-600 dark:text-amber-400 animate-pulse" />
+              <Lock v-else class="w-3 h-3 text-slate-400" />
+              <span v-if="canEditOrDelete(qual)">مهلت ویرایش/حذف: {{ formatRemainingTime(qual) }}</span>
+              <span v-else>قفل شده (اتمام ۱۰ دقیقه)</span>
+            </span>
           </div>
 
           <!-- 7. Actions -->
@@ -341,8 +436,10 @@ function getStatusLabel(status: QualificationVerificationStatus): string {
             <Button
               variant="outline"
               size="sm"
-              class="text-xs"
-              title="ویرایش مشخصات مدرک"
+              class="text-xs transition-opacity"
+              :class="!canEditOrDelete(qual) ? 'opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500' : ''"
+              :disabled="!canEditOrDelete(qual)"
+              :title="!canEditOrDelete(qual) ? 'مهلت ۱۰ دقیقه‌ای ویرایش به پایان رسیده است' : 'ویرایش مشخصات مدرک'"
               @click="openEditModal(qual)"
             >
               <Edit2 class="w-3.5 h-3.5 ml-1" />
@@ -353,9 +450,11 @@ function getStatusLabel(status: QualificationVerificationStatus): string {
             <Button
               variant="outline"
               size="sm"
-              class="text-rose-600 border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs"
-              title="حذف مدرک تحصیلی"
-              @click="itemToDelete = qual"
+              class="text-rose-600 border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs transition-opacity"
+              :class="!canEditOrDelete(qual) ? 'opacity-40 cursor-not-allowed border-slate-200 text-slate-400 dark:text-slate-500 hover:bg-transparent' : ''"
+              :disabled="!canEditOrDelete(qual)"
+              :title="!canEditOrDelete(qual) ? 'مهلت ۱۰ دقیقه‌ای حذف به پایان رسیده است' : 'حذف مدرک تحصیلی'"
+              @click="confirmDeleteQual(qual)"
             >
               <Trash2 class="w-3.5 h-3.5 ml-1" />
               حذف
@@ -370,7 +469,7 @@ function getStatusLabel(status: QualificationVerificationStatus): string {
         >
           <AlertTriangle class="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
           <div class="leading-relaxed">
-            <strong class="font-extrabold text-rose-700 dark:text-rose-300 ml-1">
+            <strong class="font-bold text-rose-700 dark:text-rose-300 ml-1">
               علت رد مدرک:
             </strong>
             <span>{{ qual.rejectionReason }}</span>
@@ -427,7 +526,7 @@ function getStatusLabel(status: QualificationVerificationStatus): string {
               <Award class="w-3 h-3 text-amber-500" />
               معدل کل:
             </span>
-            <span v-if="qual.gpa !== undefined && qual.gpa !== null" class="font-extrabold text-amber-600 dark:text-amber-400 tabular-nums">
+            <span v-if="qual.gpa !== undefined && qual.gpa !== null" class="font-bold text-amber-600 dark:text-amber-400 tabular-nums">
               {{ toPersianDigits(qual.gpa) }} <span class="text-[10px] font-normal text-slate-400">از ۲۰</span>
             </span>
             <span v-else class="text-slate-400">—</span>

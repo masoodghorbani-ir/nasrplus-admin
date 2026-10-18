@@ -14,7 +14,14 @@ export const apiClient: AxiosInstance = axios.create({
 // Request interceptor: inject JWT Bearer token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('nasrplus_token');
+    const isProfileRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/profile');
+    const memberToken = localStorage.getItem('nasrplus_member_token');
+    const adminToken = localStorage.getItem('nasrplus_token');
+
+    const token = isProfileRoute
+      ? (memberToken || adminToken)
+      : (adminToken || memberToken);
+
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }

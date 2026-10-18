@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import { membersApi } from '@/api';
 import { useLookupsStore, useNotificationStore } from '@/stores';
 import type {
@@ -38,18 +38,32 @@ import {
   XCircle,
   FileText,
   ExternalLink,
+  Lock,
 } from 'lucide-vue-next';
 
 interface Props {
   memberId: string;
   member?: Member | null;
   allowVerify?: boolean;
+  restrictEditTime?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   member: null,
   allowVerify: true,
+  restrictEditTime: undefined,
 });
+
+const isTimeRestricted = computed(() => {
+  if (props.restrictEditTime !== undefined) {
+    return props.restrictEditTime;
+  }
+  return !props.allowVerify;
+});
+
+const EDIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes in milliseconds
+const now = ref(Date.now());
+let timerInterval: ReturnType<typeof setInterval> | null = null;
 
 const emit = defineEmits<{
   (e: 'updated'): void;
@@ -96,7 +110,43 @@ onMounted(() => {
   if (props.memberId) {
     loadSkills();
   }
+  timerInterval = setInterval(() => {
+    now.value = Date.now();
+  }, 1000);
 });
+
+onUnmounted(() => {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+});
+
+function getRemainingEditTimeMs(item: { createdAt?: string }): number {
+  if (!item?.createdAt) return 0;
+  const createdTime = new Date(item.createdAt).getTime();
+  if (isNaN(createdTime)) return 0;
+  const elapsed = now.value - createdTime;
+  const remaining = EDIT_WINDOW_MS - elapsed;
+  return Math.max(0, remaining);
+}
+
+function canEditOrDelete(item: { createdAt?: string }): boolean {
+  if (!isTimeRestricted.value) return true;
+  return getRemainingEditTimeMs(item) > 0;
+}
+
+function formatRemainingTime(item: { createdAt?: string }): string {
+  const ms = getRemainingEditTimeMs(item);
+  if (ms <= 0) return 'پایان مهلت';
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes > 0) {
+    return `${toPersianDigits(minutes)} دقیقه و ${toPersianDigits(seconds)} ثانیه`;
+  }
+  return `${toPersianDigits(seconds)} ثانیه`;
+}
 
 watch(
   () => props.memberId,
@@ -133,6 +183,10 @@ function handleOpenCreate() {
 }
 
 function handleOpenEdit(skill: IMemberSkill) {
+  if (!canEditOrDelete(skill)) {
+    notificationStore.warning('ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد و این زمان به پایان رسیده است.');
+    return;
+  }
   editingSkill.value = skill;
   isFormModalOpen.value = true;
 }
@@ -155,6 +209,10 @@ function handleOpenPreview(skill: IMemberSkill) {
 }
 
 function handleConfirmDelete(skill: IMemberSkill) {
+  if (!canEditOrDelete(skill)) {
+    notificationStore.warning('ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد و این زمان به پایان رسیده است.');
+    return;
+  }
   itemToDelete.value = skill;
 }
 
@@ -208,6 +266,22 @@ function getSpecCode(skill: IMemberSkill): string {
 
 <template>
   <div class="space-y-4 text-right" dir="rtl">
+    <!-- 10-Minute Policy Banner -->
+    <div
+      v-if="isTimeRestricted"
+      class="p-3.5 sm:p-4 rounded-2xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-900/60 flex items-center gap-3 text-amber-900 dark:text-amber-200 text-xs sm:text-sm font-bold shadow-xs"
+    >
+      <div class="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/70 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+        <Clock class="w-5 h-5" />
+      </div>
+      <div class="flex-1 min-w-0">
+        <span class="block">ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد</span>
+        <span class="block text-2xs sm:text-xs text-amber-700 dark:text-amber-400 font-normal mt-0.5">
+          پس از ثبت مهارت و تخصص، حداکثر تا ۱۰ دقیقه فرصت ویرایش اطلاعات یا حذف آن را خواهید داشت.
+        </span>
+      </div>
+    </div>
+
     <!-- Top Header: Title, Stats & Add Action -->
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
       <div class="space-y-1">
@@ -325,8 +399,8 @@ function getSpecCode(skill: IMemberSkill): string {
             </div>
           </div>
 
-          <!-- Status Badge (3.3 Verification Status Badges) -->
-          <div class="flex items-center gap-2 shrink-0">
+          <!-- Status Badge (3.3 Verification Status Badges) & 10-Minute Timer Badge -->
+          <div class="flex items-center gap-2 shrink-0 flex-wrap">
             <span
               :class="[
                 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-colors',
@@ -338,6 +412,23 @@ function getSpecCode(skill: IMemberSkill): string {
                 class="w-3.5 h-3.5"
               />
               <span>{{ getSkillStatusInfo(skill.verificationStatus).label }}</span>
+            </span>
+
+            <!-- 10-Minute Timer Badge (Member Portal Mode) -->
+            <span
+              v-if="isTimeRestricted"
+              :class="[
+                'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-2xs font-bold border transition-colors',
+                canEditOrDelete(skill)
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                  : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+              ]"
+              :title="canEditOrDelete(skill) ? 'ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد' : 'مهلت ۱۰ دقیقه‌ای ویرایش و حذف به پایان رسیده است'"
+            >
+              <Clock v-if="canEditOrDelete(skill)" class="w-3 h-3 text-amber-600 dark:text-amber-400 animate-pulse" />
+              <Lock v-else class="w-3 h-3 text-slate-400" />
+              <span v-if="canEditOrDelete(skill)">مهلت ویرایش/حذف: {{ formatRemainingTime(skill) }}</span>
+              <span v-else>قفل شده (اتمام ۱۰ دقیقه)</span>
             </span>
           </div>
         </div>
@@ -382,7 +473,7 @@ function getSpecCode(skill: IMemberSkill): string {
                   :style="{ width: `${skill.selfAssessmentPercentage}%` }"
                 ></div>
               </div>
-              <span class="font-black tabular-nums text-xs text-slate-900 dark:text-slate-100">
+              <span class="font-bold tabular-nums text-xs text-slate-800 dark:text-slate-100">
                 {{ toPersianDigits(skill.selfAssessmentPercentage) }}٪
               </span>
             </div>
@@ -457,8 +548,10 @@ function getSpecCode(skill: IMemberSkill): string {
             <Button
               variant="outline"
               size="sm"
-              class="h-8 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700"
-              title="ویرایش مهارت"
+              class="h-8 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 transition-opacity"
+              :class="!canEditOrDelete(skill) ? 'opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500 hover:bg-transparent' : ''"
+              :disabled="!canEditOrDelete(skill)"
+              :title="!canEditOrDelete(skill) ? 'مهلت ۱۰ دقیقه‌ای ویرایش به پایان رسیده است' : 'ویرایش مهارت'"
               @click="handleOpenEdit(skill)"
             >
               <Edit2 class="w-3.5 h-3.5 ml-1 text-slate-500 dark:text-slate-400 shrink-0" />
@@ -469,8 +562,10 @@ function getSpecCode(skill: IMemberSkill): string {
             <Button
               variant="outline"
               size="sm"
-              class="h-8 text-xs font-medium text-rose-600 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40"
-              title="حذف مهارت"
+              class="h-8 text-xs font-medium text-rose-600 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-opacity"
+              :class="!canEditOrDelete(skill) ? 'opacity-40 cursor-not-allowed border-slate-200 text-slate-400 dark:text-slate-500 hover:bg-transparent' : ''"
+              :disabled="!canEditOrDelete(skill)"
+              :title="!canEditOrDelete(skill) ? 'مهلت ۱۰ دقیقه‌ای حذف به پایان رسیده است' : 'حذف مهارت'"
               @click="handleConfirmDelete(skill)"
             >
               <Trash2 class="w-3.5 h-3.5 ml-1 text-rose-500 shrink-0" />

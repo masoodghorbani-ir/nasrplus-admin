@@ -22,8 +22,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/profile/ProfileView.vue'),
     meta: {
       requiresAuth: false,
-      title: 'پروفایل اعضا',
+      title: 'پروفایل و پرتال اعضای صنف',
     },
+  },
+  {
+    path: '/profile/login',
+    redirect: '/profile',
   },
 
   // 3. Public Member Registration & Landing

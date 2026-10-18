@@ -21,7 +21,7 @@
     >
       <span
         v-if="initials"
-        class="font-black text-slate-700 dark:text-slate-200 tracking-tight select-none"
+        class="font-bold text-slate-700 dark:text-slate-200 select-none"
       >
         {{ initials }}
       </span>
