@@ -111,7 +111,12 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'members/qualifications',
+        path: 'desk',
+        name: 'Desk',
+        redirect: '/admin/desk/qualifications',
+      },
+      {
+        path: 'desk/qualifications',
         name: 'MemberQualificationsDesk',
         component: () => import('@/views/members/MemberQualificationsDeskView.vue'),
         meta: {
@@ -121,7 +126,7 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'members/skills',
+        path: 'desk/skills',
         name: 'MemberSkillsDesk',
         component: () => import('@/views/members/MemberSkillsDeskView.vue'),
         meta: {
@@ -131,8 +136,16 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'members/qualifications',
+        redirect: '/admin/desk/qualifications',
+      },
+      {
+        path: 'members/skills',
+        redirect: '/admin/desk/skills',
+      },
+      {
         path: 'members/academic-qualifications',
-        redirect: '/admin/members/qualifications',
+        redirect: '/admin/desk/qualifications',
       },
       {
         path: 'companies',
@@ -173,16 +186,28 @@ const routes: RouteRecordRaw[] = [
     redirect: '/admin/dashboard',
   },
   {
+    path: '/desk',
+    redirect: '/admin/desk/qualifications',
+  },
+  {
+    path: '/desk/qualifications',
+    redirect: '/admin/desk/qualifications',
+  },
+  {
+    path: '/desk/skills',
+    redirect: '/admin/desk/skills',
+  },
+  {
     path: '/members',
     redirect: '/admin/members',
   },
   {
     path: '/members/skills',
-    redirect: '/admin/members/skills',
+    redirect: '/admin/desk/skills',
   },
   {
     path: '/members/qualifications',
-    redirect: '/admin/members/qualifications',
+    redirect: '/admin/desk/qualifications',
   },
   {
     path: '/companies',

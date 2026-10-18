@@ -15,6 +15,7 @@ import {
   ExternalLink,
   GraduationCap,
   Award,
+  ClipboardCheck,
 } from 'lucide-vue-next';
 
 interface NavItem {
@@ -32,21 +33,6 @@ const authStore = useAuthStore();
 const themeStore = useThemeStore();
 const lookupsStore = useLookupsStore();
 
-const isMembersSubmenuOpen = ref(route.path.startsWith('/admin/members') || route.path.startsWith('/members'));
-
-watch(
-  () => route.path,
-  (newPath) => {
-    if (newPath.startsWith('/admin/members') || newPath.startsWith('/members')) {
-      isMembersSubmenuOpen.value = true;
-    }
-  }
-);
-
-onMounted(() => {
-  lookupsStore.fetchAllLookups();
-});
-
 const navItems: NavItem[] = [
   {
     name: 'dashboard',
@@ -59,6 +45,13 @@ const navItems: NavItem[] = [
     label: 'مدیریت اعضا',
     path: '/admin/members',
     icon: Users,
+    permission: 'members:read',
+  },
+  {
+    name: 'desk',
+    label: 'کارتابل',
+    path: '/admin/desk/qualifications',
+    icon: ClipboardCheck,
     permission: 'members:read',
   },
   {
@@ -98,7 +91,19 @@ function isItemActive(path: string): boolean {
   return route.path.startsWith(path);
 }
 
+const isDeskSectionActive = computed(() => {
+  return (
+    route.path.startsWith('/admin/desk') ||
+    route.path.startsWith('/desk') ||
+    route.path.startsWith('/admin/members/qualifications') ||
+    route.path.startsWith('/admin/members/skills') ||
+    route.path.startsWith('/members/qualifications') ||
+    route.path.startsWith('/members/skills')
+  );
+});
+
 const isMembersSectionActive = computed(() => {
+  if (isDeskSectionActive.value) return false;
   return route.path.startsWith('/admin/members') || route.path.startsWith('/members');
 });
 
@@ -112,16 +117,40 @@ const isAllMembersActive = computed(() => {
 
 const isQualificationsDeskActive = computed(() => {
   return (
+    route.path.startsWith('/admin/desk/qualifications') ||
+    route.path.startsWith('/desk/qualifications') ||
     route.path.startsWith('/admin/members/qualifications') ||
-    route.path.startsWith('/admin/members/academic-qualifications')
+    route.path.startsWith('/admin/members/academic-qualifications') ||
+    route.path.startsWith('/members/qualifications')
   );
 });
 
 const isSkillsDeskActive = computed(() => {
   return (
+    route.path.startsWith('/admin/desk/skills') ||
+    route.path.startsWith('/desk/skills') ||
     route.path.startsWith('/admin/members/skills') ||
     route.path.startsWith('/members/skills')
   );
+});
+
+const isMembersSubmenuOpen = ref(isMembersSectionActive.value);
+const isDeskSubmenuOpen = ref(isDeskSectionActive.value);
+
+watch(
+  () => route.path,
+  () => {
+    if (isMembersSectionActive.value) {
+      isMembersSubmenuOpen.value = true;
+    }
+    if (isDeskSectionActive.value) {
+      isDeskSubmenuOpen.value = true;
+    }
+  }
+);
+
+onMounted(() => {
+  lookupsStore.fetchAllLookups();
 });
 
 function isMembershipTypeActive(id: string, title?: string): boolean {
@@ -145,8 +174,21 @@ function handleMembersParentClick() {
     navigateToMembers(undefined);
   } else {
     isMembersSubmenuOpen.value = !isMembersSubmenuOpen.value;
-    if (isMembersSubmenuOpen.value && !route.path.startsWith('/admin/members')) {
+    if (isMembersSubmenuOpen.value && !isMembersSectionActive.value) {
       navigateToMembers(undefined);
+    }
+  }
+}
+
+function handleDeskParentClick() {
+  if (themeStore.sidebarCollapsed) {
+    themeStore.toggleSidebar();
+    isDeskSubmenuOpen.value = true;
+    navigateTo('/admin/desk/qualifications');
+  } else {
+    isDeskSubmenuOpen.value = !isDeskSubmenuOpen.value;
+    if (isDeskSubmenuOpen.value && !isDeskSectionActive.value) {
+      navigateTo('/admin/desk/qualifications');
     }
   }
 }
@@ -314,37 +356,7 @@ function navigateToMembers(typeId?: string) {
                   <span class="truncate">مشاهده همه اعضا</span>
                 </button>
 
-                <!-- 2. Academic Qualifications Verification Desk -->
-                <button
-                  type="button"
-                  :class="[
-                    'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer text-right',
-                    isQualificationsDeskActive
-                      ? 'bg-brand-600 text-white font-bold shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-slate-200 font-medium',
-                  ]"
-                  @click="navigateTo('/admin/members/qualifications')"
-                >
-                  <GraduationCap class="w-3.5 h-3.5 shrink-0" />
-                  <span class="truncate">کارتابل بررسی مدارک تحصیلی</span>
-                </button>
-
-                <!-- 3. Member Skills & Specializations Verification Desk -->
-                <button
-                  type="button"
-                  :class="[
-                    'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer text-right',
-                    isSkillsDeskActive
-                      ? 'bg-brand-600 text-white font-bold shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-slate-200 font-medium',
-                  ]"
-                  @click="navigateTo('/admin/members/skills')"
-                >
-                  <Award class="w-3.5 h-3.5 shrink-0" />
-                  <span class="truncate">کارتابل بررسی مهارت‌ها و گواهی‌ها</span>
-                </button>
-
-                <!-- 3..N. Membership Types -->
+                <!-- Membership Types -->
                 <button
                   v-for="mType in lookupsStore.membershipTypes"
                   :key="mType._id"
@@ -364,6 +376,99 @@ function navigateToMembers(typeId?: string) {
                     ]"
                   ></span>
                   <span class="truncate">{{ mType.title }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Special Desk Item with Submenu -->
+          <div v-else-if="item.name === 'desk'" class="space-y-1">
+            <!-- Collapsed Mode: Single Icon Button -->
+            <button
+              v-if="themeStore.sidebarCollapsed"
+              type="button"
+              :title="item.label"
+              :class="[
+                'w-full flex items-center justify-center px-0 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer',
+                isDeskSectionActive
+                  ? 'bg-brand-600 text-white font-semibold shadow-sm shadow-brand-600/25'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-slate-100',
+              ]"
+              @click="handleDeskParentClick"
+            >
+              <component
+                :is="item.icon"
+                :class="[
+                  'w-5 h-5 shrink-0 transition-transform',
+                  isDeskSectionActive ? 'text-white' : 'text-slate-400 dark:text-slate-400 group-hover:text-slate-600',
+                ]"
+              />
+            </button>
+
+            <!-- Expanded Mode: Accordion Header & Submenu -->
+            <div v-else>
+              <button
+                type="button"
+                :class="[
+                  'w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer',
+                  isDeskSectionActive
+                    ? 'bg-brand-50/80 text-brand-900 dark:bg-brand-950/40 dark:text-brand-100 font-bold border border-brand-200/50 dark:border-brand-800/40'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-slate-100',
+                ]"
+                @click="handleDeskParentClick"
+              >
+                <div class="flex items-center gap-3 truncate min-w-0">
+                  <component
+                    :is="item.icon"
+                    :class="[
+                      'w-5 h-5 shrink-0 transition-transform',
+                      isDeskSectionActive ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400 dark:text-slate-400',
+                    ]"
+                  />
+                  <span class="truncate text-right">{{ item.label }}</span>
+                </div>
+
+                <ChevronDown
+                  :class="[
+                    'w-4 h-4 shrink-0 text-slate-400 transition-transform duration-200',
+                    isDeskSubmenuOpen ? 'rotate-180' : '',
+                  ]"
+                />
+              </button>
+
+              <!-- Collapsible Submenu -->
+              <div
+                v-show="isDeskSubmenuOpen"
+                class="pr-3 mr-3.5 border-r-2 border-slate-200/80 dark:border-slate-800 space-y-1 mt-1 transition-all"
+              >
+                <!-- 1. Academic Qualifications Verification Desk -->
+                <button
+                  type="button"
+                  :class="[
+                    'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer text-right',
+                    isQualificationsDeskActive
+                      ? 'bg-brand-600 text-white font-bold shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-slate-200 font-medium',
+                  ]"
+                  @click="navigateTo('/admin/desk/qualifications')"
+                >
+                  <GraduationCap class="w-3.5 h-3.5 shrink-0" />
+                  <span class="truncate">بررسی مدارک تحصیلی</span>
+                </button>
+
+                <!-- 2. Member Skills & Specializations Verification Desk -->
+                <button
+                  type="button"
+                  :class="[
+                    'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer text-right',
+                    isSkillsDeskActive
+                      ? 'bg-brand-600 text-white font-bold shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-slate-200 font-medium',
+                  ]"
+                  @click="navigateTo('/admin/desk/skills')"
+                >
+                  <Award class="w-3.5 h-3.5 shrink-0" />
+                  <span class="truncate">بررسی مهارت‌ها و گواهی‌ها</span>
                 </button>
               </div>
             </div>
