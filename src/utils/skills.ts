@@ -159,7 +159,18 @@ export function getStoredMemberSkills(memberId: string): IMemberSkill[] {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}${memberId}`);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        // Sanitize any dead blob: URLs that may have been stored during previous sessions
+        return parsed.map((s: IMemberSkill) => {
+          if (s.certificateFile && s.certificateFile.startsWith('blob:')) {
+            return {
+              ...s,
+              certificateFile: SAMPLE_CERTIFICATE_PDF_DATA_URL,
+            };
+          }
+          return s;
+        });
+      }
     }
   } catch {
     // Ignore JSON parse errors
@@ -204,7 +215,16 @@ export function getAllStoredSkills(): IMemberSkill[] {
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed)) {
-            all.push(...parsed);
+            const sanitized = parsed.map((s: IMemberSkill) => {
+              if (s.certificateFile && s.certificateFile.startsWith('blob:')) {
+                return {
+                  ...s,
+                  certificateFile: SAMPLE_CERTIFICATE_PDF_DATA_URL,
+                };
+              }
+              return s;
+            });
+            all.push(...sanitized);
           }
         }
       }
@@ -238,6 +258,133 @@ export function createVerificationLog(
     changedAt: new Date().toISOString(),
     comment: comment || (toStatus === 'APPROVED' ? 'تائید شده توسط کارشناس' : toStatus === 'REJECTED' ? 'رد شده توسط کارشناس' : 'در انتظار بررسی مجدد'),
     rejectionReason: rejectionReason || '',
+  };
+}
+
+/**
+ * Standard valid 1-page sample certificate PDF for testing and demo purposes
+ */
+export const SAMPLE_CERTIFICATE_PDF_DATA_URL =
+  'data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA2MTIgNzkyXQovQ29udGVudHMgNCAwIFIKL1Jlc291cmNlcyA8PAovRm9udCA8PAovRjEgNSAwIFIKPj4KPj4KPj4KZW5kb2JqCjQgMCBvYmoKPDwKL0xlbmd0aCA4Nwo+PgpzdHJlYW0KQlQKL0YxIDI0IFRmCjEwMCA3MDAgVGROCihOYXNyUGx1cyAtIENlcnRpZmljYXRlIG9mIFByb2Zlc3Npb25hbCBDb21wZXRlbmNlKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwKL1R5cGUgL1ZvbnQKL1N1YnR5cGUgL1R5cGUxCi9CYXNlRm9udCAvSGVsdmV0aWNhCj4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA2OCAwMDAwMCBuIAowMDAwMDAwMTI1IDAwMDAwIG4gCjAwMDAwMDAyNjAgMDAwMDAgbiAKMDAwMDAwMDM5NyAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDYKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjQ3NAolJUVPRg==';
+
+/**
+ * Resolves certificate URL (handles relative backend paths like /uploads/...)
+ */
+export function resolveCertificateUrl(path?: string | null): string {
+  if (!path) return '';
+  const trimmed = path.trim();
+  if (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('blob:')
+  ) {
+    return trimmed;
+  }
+
+  const baseUrl =
+    import.meta.env.VITE_SERVER_URL ||
+    (import.meta.env.VITE_API_BASE_URL
+      ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1\/?$/, '')
+      : '') ||
+    'http://localhost:5000';
+
+  const cleanBase = baseUrl.replace(/\/$/, '');
+  const cleanPath = trimmed.replace(/^\//, '');
+  return `${cleanBase}/${cleanPath}`;
+}
+
+/**
+ * Convert File or Blob to Base64 Data URL
+ */
+export function fileToDataUrl(file: File | Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Convert Base64 data URL to Blob for native rendering (e.g. PDF in iframe/object)
+ */
+export function base64ToBlob(base64Data: string, contentType = 'application/pdf'): Blob {
+  const parts = base64Data.split(',');
+  const rawBase64 = parts.length > 1 ? parts[1] : parts[0];
+  const mimeMatch = parts[0]?.match(/:(.*?);/);
+  const type = mimeMatch ? mimeMatch[1] : contentType;
+
+  const byteCharacters = atob(rawBase64.trim());
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type });
+}
+
+/**
+ * Check if a file or URL represents a PDF document
+ */
+export function isPdfDocument(fileOrUrl?: File | string | null): boolean {
+  if (!fileOrUrl) return false;
+  if (typeof fileOrUrl !== 'string') {
+    return fileOrUrl.type === 'application/pdf' || fileOrUrl.name.toLowerCase().endsWith('.pdf');
+  }
+  const lower = fileOrUrl.toLowerCase().trim();
+  if (lower.startsWith('data:application/pdf') || lower.startsWith('data:pdf/')) return true;
+  if (fileOrUrl.trim().startsWith('JVBERi0')) return true;
+  return /\.pdf(\?|#|$)/i.test(fileOrUrl);
+}
+
+/**
+ * Check if a file or URL represents an image
+ */
+export function isImageDocument(fileOrUrl?: File | string | null): boolean {
+  if (!fileOrUrl) return false;
+  if (typeof fileOrUrl !== 'string') {
+    return fileOrUrl.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|svg|bmp)$/i.test(fileOrUrl.name);
+  }
+  const lower = fileOrUrl.toLowerCase().trim();
+  if (lower.startsWith('data:image/')) return true;
+  if (
+    fileOrUrl.trim().startsWith('/9j/') ||
+    fileOrUrl.trim().startsWith('iVBORw0KGgo') ||
+    fileOrUrl.trim().startsWith('R0lGOD') ||
+    fileOrUrl.trim().startsWith('UklGR')
+  ) {
+    return true;
+  }
+  if (/\.(jpe?g|png|webp|gif|svg|bmp)(\?|#|$)/i.test(fileOrUrl)) return true;
+  return lower.includes('images.unsplash.com');
+}
+
+/**
+ * Validate that an uploaded file is strictly an image or a PDF
+ */
+export function isValidSkillCertificateFile(file: File): { valid: boolean; error?: string; kind?: 'pdf' | 'image' } {
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(file.name);
+
+  if (!isPdf && !isImage) {
+    return {
+      valid: false,
+      error: 'فرمت فایل نامعتبر است. تنها فایل‌های تصویری (JPG, PNG, WebP) و اسناد PDF مجاز هستند.',
+    };
+  }
+
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxSize) {
+    return {
+      valid: false,
+      error: 'حداکثر حجم مجاز برای بارگذاری گواهینامه ۱۰ مگابایت است.',
+    };
+  }
+
+  return {
+    valid: true,
+    kind: isPdf ? 'pdf' : 'image',
   };
 }
 
@@ -287,8 +434,8 @@ export function seedSampleSkillsIfEmpty(members: any[] = [], specializations: an
         startDate: '2019-06-15T00:00:00.000Z',
         selfAssessmentPercentage: 92,
         hasCertificate: true,
-        certificateTitle: 'مدرک تخصصی توسعه نرم‌افزار سازمانی FullStack',
-        certificateFile: 'https://images.unsplash.com/photo-1607799279861-4dd421887fb3?auto=format&fit=crop&w=1200&q=80',
+        certificateTitle: 'مدرک تخصصی توسعه نرم‌افزار سازمانی FullStack (نسخه PDF)',
+        certificateFile: SAMPLE_CERTIFICATE_PDF_DATA_URL,
         description: 'توسعه میکروسرویس‌های Node.js، معماری کلین و پیاده‌سازی فرانت‌اند پیشرفته Vue / React',
         verificationStatus: 'APPROVED' as SkillVerificationStatus,
         rejectionReason: '',

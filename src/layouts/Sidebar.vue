@@ -24,6 +24,7 @@ interface NavItem {
   path: string;
   icon: any;
   permission?: string;
+  superAdminOnly?: boolean;
   badge?: string;
 }
 
@@ -63,22 +64,25 @@ const navItems: NavItem[] = [
   },
   {
     name: 'lookups',
-    label: 'اطلاعات پایه و تعاریف',
+    label: 'اطلاعات پایه و دسته‌بندی‌ها',
     path: '/admin/lookups',
     icon: Database,
-    permission: 'lookups:read',
+    superAdminOnly: true,
   },
   {
     name: 'admins',
     label: 'مدیران و دسترسی‌ها',
     path: '/admin/admins',
     icon: ShieldCheck,
-    permission: 'admins:manage',
+    superAdminOnly: true,
   },
 ];
 
 const filteredNavItems = computed(() => {
   return navItems.filter((item) => {
+    if (item.superAdminOnly && !authStore.isSuperAdmin) {
+      return false;
+    }
     if (!item.permission) return true;
     return authStore.hasPermission(item.permission);
   });

@@ -163,7 +163,8 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/lookups/LookupsView.vue'),
         meta: {
           requiresAuth: true,
-          title: 'اطلاعات پایه و تعاریف صنف',
+          requiresSuperAdmin: true,
+          title: 'اطلاعات پایه و دسته‌بندی‌ها',
           permission: 'lookups:read',
         },
       },
@@ -173,6 +174,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/admins/AdminsView.vue'),
         meta: {
           requiresAuth: true,
+          requiresSuperAdmin: true,
           title: 'مدیران و سطوح دسترسی',
           permission: 'admins:manage',
         },
@@ -260,6 +262,9 @@ router.beforeEach((to, _from, next) => {
       query: { redirect: to.fullPath },
     });
   } else if ((to.path === '/login' || to.path === '/admin/login') && token) {
+    next('/admin/dashboard');
+  } else if (to.meta?.requiresSuperAdmin && !authStore.isSuperAdmin) {
+    // If not superadmin, deny access to superadmin-only management sections
     next('/admin/dashboard');
   } else if (to.meta?.permission && !authStore.hasPermission(to.meta.permission as string)) {
     // If lacks permission, redirect to admin dashboard

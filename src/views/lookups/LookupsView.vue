@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { lookupsApi } from '@/api';
-import { useLookupsStore, useNotificationStore } from '@/stores';
+import { useLookupsStore, useNotificationStore, useAuthStore } from '@/stores';
 import {
   Database,
   Plus,
@@ -39,6 +39,7 @@ const route = useRoute();
 const router = useRouter();
 const lookupsStore = useLookupsStore();
 const notificationStore = useNotificationStore();
+const authStore = useAuthStore();
 
 export type LookupTab =
   | 'membership-types'
@@ -394,6 +395,10 @@ async function handleDeleteItem() {
 }
 
 onMounted(() => {
+  if (!authStore.isSuperAdmin) {
+    router.replace('/admin/dashboard');
+    return;
+  }
   lookupsStore.fetchAllLookups();
 });
 </script>

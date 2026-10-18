@@ -11,6 +11,7 @@ interface Props {
   closable?: boolean;
   closeOnBackdrop?: boolean;
   closeOnEscape?: boolean;
+  zIndex?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -19,6 +20,7 @@ const props = withDefaults(defineProps<Props>(), {
   closable: true,
   closeOnBackdrop: false,
   closeOnEscape: false,
+  zIndex: 'z-[60]',
 });
 
 const emit = defineEmits<{
@@ -104,7 +106,7 @@ const sizeClasses = computed(() => {
     >
       <div
         v-if="open"
-        class="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+        :class="['fixed inset-0 flex items-center justify-center p-4 sm:p-6 overflow-y-auto', zIndex]"
         dir="rtl"
       >
         <!-- Backdrop -->

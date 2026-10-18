@@ -40,3 +40,13 @@ export interface CreateAdminInput {
   isActive?: boolean;
   permissions?: string[];
 }
+
+export interface UpdateAdminInput {
+  username?: string;
+  password?: string;
+  type?: AdminType;
+  fullName?: string;
+  isActive?: boolean;
+  permissions?: string[];
+}
+

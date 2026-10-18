@@ -28,6 +28,7 @@ import {
   setStoredMemberSkills,
   getAllStoredSkills,
   createVerificationLog,
+  fileToDataUrl,
 } from '@/utils/skills';
 
 export const membersApi = {
@@ -298,6 +299,21 @@ export const membersApi = {
       Object.assign(rawData, payload);
     }
 
+    let certFile = '';
+    if (rawData.certificateDataUrl) {
+      certFile = String(rawData.certificateDataUrl);
+    } else if (rawData.certificate instanceof File) {
+      try {
+        certFile = await fileToDataUrl(rawData.certificate);
+      } catch {
+        certFile = '';
+      }
+    } else if (typeof rawData.certificate === 'string') {
+      certFile = rawData.certificate;
+    } else if (rawData.certificateFile) {
+      certFile = rawData.certificateFile;
+    }
+
     const initialLog = createVerificationLog('PENDING', undefined, 'Initial registration - Pending expert verification');
     const newSkill: IMemberSkill = {
       _id: `skill_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -307,7 +323,7 @@ export const membersApi = {
       selfAssessmentPercentage: Number(rawData.selfAssessmentPercentage) || 50,
       hasCertificate: String(rawData.hasCertificate) === 'true' || rawData.hasCertificate === true,
       certificateTitle: rawData.certificateTitle || '',
-      certificateFile: rawData.certificate ? (typeof rawData.certificate === 'string' ? rawData.certificate : URL.createObjectURL(rawData.certificate)) : '',
+      certificateFile: certFile,
       description: rawData.description || '',
       verificationStatus: 'PENDING',
       verifiedBy: null,
@@ -398,6 +414,22 @@ export const membersApi = {
     const index = skills.findIndex((s) => s._id === skillId);
     if (index !== -1) {
       const existing = skills[index];
+
+      let updatedCertFile = existing.certificateFile;
+      if (rawData.certificateDataUrl) {
+        updatedCertFile = String(rawData.certificateDataUrl);
+      } else if (rawData.certificate instanceof File) {
+        try {
+          updatedCertFile = await fileToDataUrl(rawData.certificate);
+        } catch {
+          updatedCertFile = existing.certificateFile;
+        }
+      } else if (typeof rawData.certificate === 'string' && rawData.certificate.trim()) {
+        updatedCertFile = rawData.certificate;
+      } else if (rawData.certificateFile !== undefined) {
+        updatedCertFile = rawData.certificateFile;
+      }
+
       const updated: IMemberSkill = {
         ...existing,
         specializationId: rawData.specializationId || existing.specializationId,
@@ -405,7 +437,7 @@ export const membersApi = {
         selfAssessmentPercentage: rawData.selfAssessmentPercentage !== undefined ? Number(rawData.selfAssessmentPercentage) : existing.selfAssessmentPercentage,
         hasCertificate: rawData.hasCertificate !== undefined ? (String(rawData.hasCertificate) === 'true' || rawData.hasCertificate === true) : existing.hasCertificate,
         certificateTitle: rawData.certificateTitle !== undefined ? rawData.certificateTitle : existing.certificateTitle,
-        certificateFile: rawData.certificate ? (typeof rawData.certificate === 'string' ? rawData.certificate : URL.createObjectURL(rawData.certificate)) : (rawData.certificateFile !== undefined ? rawData.certificateFile : existing.certificateFile),
+        certificateFile: updatedCertFile,
         description: rawData.description !== undefined ? rawData.description : existing.description,
         updatedAt: new Date().toISOString(),
       };
@@ -484,10 +516,18 @@ export const membersApi = {
     if (index !== -1) {
       const existing = skills[index];
       const log = createVerificationLog('PENDING', existing.verificationStatus, 'بارگذاری مجدد گواهینامه - بازنشانی به در انتظار بررسی');
+
+      let certDataUrl = '';
+      try {
+        certDataUrl = await fileToDataUrl(file);
+      } catch {
+        certDataUrl = '';
+      }
+
       const updated: IMemberSkill = {
         ...existing,
         hasCertificate: true,
-        certificateFile: URL.createObjectURL(file),
+        certificateFile: certDataUrl,
         verificationStatus: 'PENDING',
         rejectionReason: '',
         verificationLogs: [log, ...(existing.verificationLogs || [])],

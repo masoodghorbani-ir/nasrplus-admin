@@ -18,6 +18,7 @@ import {
   AlertCircle,
   Info,
 } from 'lucide-vue-next';
+import { isValidSkillCertificateFile, fileToDataUrl } from '@/utils/skills';
 
 interface Props {
   open: boolean;
@@ -53,6 +54,7 @@ const formDescription = ref('');
 // File Upload State
 const certificateFile = ref<File | null>(null);
 const certificatePreviewUrl = ref<string>('');
+const selectedFileType = ref<'pdf' | 'image' | null>(null);
 const existingCertificateUrl = ref<string>('');
 const isDragging = ref(false);
 
@@ -76,6 +78,7 @@ watch(
     errors.value = {};
     certificateFile.value = null;
     certificatePreviewUrl.value = '';
+    selectedFileType.value = null;
 
     if (isOpen) {
       if (props.skill) {
@@ -108,6 +111,7 @@ function resetForm() {
   formDescription.value = '';
   certificateFile.value = null;
   certificatePreviewUrl.value = '';
+  selectedFileType.value = null;
   existingCertificateUrl.value = '';
   errors.value = {};
 }
@@ -127,32 +131,23 @@ function handleFileDrop(e: DragEvent) {
   }
 }
 
-function processSelectedFile(file: File) {
-  // Accepted: PDF, JPEG, PNG, WebP (up to 10MB)
-  const allowedTypes = [
-    'application/pdf',
-    'image/jpeg',
-    'image/jpg',
-    'image/png',
-    'image/webp',
-  ];
-
-  if (!allowedTypes.includes(file.type)) {
-    errors.value.certificate = 'تنها فایل‌های PDF، JPG، PNG و WebP مجاز می‌باشند.';
-    return;
-  }
-
-  const maxSize = 10 * 1024 * 1024; // 10MB
-  if (file.size > maxSize) {
-    errors.value.certificate = 'حداکثر حجم مجاز برای بارگذاری گواهینامه ۱۰ مگابایت است.';
+async function processSelectedFile(file: File) {
+  const check = isValidSkillCertificateFile(file);
+  if (!check.valid) {
+    errors.value.certificate = check.error || 'تنها فایل‌های تصویری و PDF مجاز می‌باشند.';
     return;
   }
 
   errors.value.certificate = '';
   certificateFile.value = file;
+  selectedFileType.value = check.kind || 'image';
 
-  if (file.type.startsWith('image/')) {
-    certificatePreviewUrl.value = URL.createObjectURL(file);
+  if (check.kind === 'image') {
+    try {
+      certificatePreviewUrl.value = await fileToDataUrl(file);
+    } catch {
+      certificatePreviewUrl.value = URL.createObjectURL(file);
+    }
   } else {
     certificatePreviewUrl.value = '';
   }
@@ -161,6 +156,7 @@ function processSelectedFile(file: File) {
 function removeSelectedFile() {
   certificateFile.value = null;
   certificatePreviewUrl.value = '';
+  selectedFileType.value = null;
 }
 
 function validateForm(): boolean {
@@ -214,6 +210,12 @@ async function handleSave() {
     formData.append('description', formDescription.value.trim());
 
     if (certificateFile.value) {
+      try {
+        const dataUrl = await fileToDataUrl(certificateFile.value);
+        formData.append('certificateDataUrl', dataUrl);
+      } catch {
+        // Continue
+      }
       formData.append('certificate', certificateFile.value);
     }
 
@@ -388,16 +390,32 @@ async function handleSave() {
               class="p-3 bg-white dark:bg-slate-900 border border-brand-300 dark:border-brand-700 rounded-xl flex items-center justify-between gap-3 shadow-2xs"
             >
               <div class="flex items-center gap-3 min-w-0">
-                <div v-if="certificatePreviewUrl" class="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0">
-                  <img :src="certificatePreviewUrl" class="w-full h-full object-cover" alt="Preview" />
+                <div v-if="selectedFileType === 'image' && certificatePreviewUrl" class="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0">
+                  <img :src="certificatePreviewUrl" class="w-full h-full object-cover" alt="پیش‌نمایش تصویر" />
+                </div>
+                <div v-else-if="selectedFileType === 'pdf'" class="w-12 h-12 rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300 flex flex-col items-center justify-center shrink-0 border border-rose-200 dark:border-rose-900/50">
+                  <FileText class="w-5 h-5" />
+                  <span class="text-[9px] font-black tracking-wider uppercase mt-0.5">PDF</span>
                 </div>
                 <div v-else class="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-300 flex items-center justify-center shrink-0">
                   <FileText class="w-5 h-5" />
                 </div>
                 <div class="truncate">
-                  <p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                    {{ certificateFile.name }}
-                  </p>
+                  <div class="flex items-center gap-1.5">
+                    <p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                      {{ certificateFile.name }}
+                    </p>
+                    <span
+                      :class="[
+                        'text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0',
+                        selectedFileType === 'pdf'
+                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                      ]"
+                    >
+                      {{ selectedFileType === 'pdf' ? 'سند PDF' : 'فایل تصویری' }}
+                    </span>
+                  </div>
                   <p class="text-2xs text-slate-400 mt-0.5">
                     {{ (certificateFile.size / 1024 / 1024).toFixed(2) }} مگابایت
                   </p>
@@ -430,7 +448,7 @@ async function handleSave() {
                 <input
                   type="file"
                   class="hidden"
-                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  accept=".pdf,application/pdf,image/*,.jpg,.jpeg,.png,.webp,.gif"
                   @change="handleFileSelect"
                 />
               </label>
@@ -455,7 +473,7 @@ async function handleSave() {
                 id="certFileInput"
                 type="file"
                 class="hidden"
-                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                accept=".pdf,application/pdf,image/*,.jpg,.jpeg,.png,.webp,.gif"
                 @change="handleFileSelect"
               />
               <label for="certFileInput" class="cursor-pointer space-y-2 block">
@@ -464,7 +482,7 @@ async function handleSave() {
                   کلیک کنید یا فایل گواهینامه را به این بخش بکشید
                 </p>
                 <p class="text-2xs text-slate-400">
-                  فرمت‌های مجاز: PDF، JPEG، PNG، WebP (حداکثر ۱۰ مگابایت)
+                  تنها فایل‌های تصویری (JPG, PNG, WebP) و اسناد PDF مجاز هستند (حداکثر ۱۰ مگابایت)
                 </p>
               </label>
             </div>
