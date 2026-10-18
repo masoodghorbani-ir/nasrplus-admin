@@ -3,7 +3,7 @@ import { ref, watch, computed } from 'vue';
 import { useLookupsStore, useNotificationStore } from '@/stores';
 import { membersApi, companiesApi } from '@/api';
 import type { Member, CreateMemberInput, UpdateMemberInput, Gender, MemberStatus, Company } from '@/types';
-import { Modal, Button, Input, Select, DatePicker } from '@/components/ui';
+import { Modal, Button, Input, Select, DatePicker, MemberAvatar } from '@/components/ui';
 import { extractErrorMessage } from '@/utils/errors';
 import { isValidNationalCode } from '@/utils/formatters';
 import { safeToIso } from '@/utils/jalali';
@@ -300,6 +300,26 @@ async function handleSubmit() {
           <span>۱. مشخصات هویتی و پایه</span>
           <span class="text-[11px] text-slate-400 font-normal">فیلدهای ستاره‌دار (*) اجباری هستند</span>
         </h4>
+
+        <!-- Existing Avatar summary in edit mode -->
+        <div
+          v-if="isEdit && props.member"
+          class="mb-4 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl flex items-center gap-3 border border-slate-100 dark:border-slate-800"
+        >
+          <MemberAvatar
+            :profile-image="props.member.profileImage"
+            :full-name="`${firstName} ${lastName}`.trim()"
+            :status="status"
+            size="md"
+            shape="rounded"
+          />
+          <div class="text-xs">
+            <span class="font-bold text-slate-800 dark:text-slate-200">تصویر پرسنلی عضو</span>
+            <p class="text-slate-400 text-[11px]">
+              {{ props.member.profileImage ? 'تصویر پرسنلی ثبت گردیده است. برای تغییر به پنل جزییات یا جدول اعضا مراجعه نمایید.' : 'تصویری برای این پرونده ثبت نشده است.' }}
+            </p>
+          </div>
+        </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Input

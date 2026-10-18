@@ -14,6 +14,7 @@ import {
   Select,
   Badge,
   EmptyState,
+  MemberAvatar,
 } from '@/components/ui';
 import { toPersianDigits } from '@/utils/formatters';
 import { extractErrorMessage } from '@/utils/errors';
@@ -309,6 +310,7 @@ interface ResolvedMemberInfo {
   code: string;
   nationalCode: string;
   isCompany: boolean;
+  profileImage?: string;
 }
 
 function getMemberInfo(memberIdProp: any, item?: IAcademicQualification | null): ResolvedMemberInfo {
@@ -379,6 +381,8 @@ function getMemberInfo(memberIdProp: any, item?: IAcademicQualification | null):
     secondaryName = '';
   }
 
+  const profileImage = m.profileImage || (cachedMember as any)?.profileImage || '';
+
   return {
     id,
     personName,
@@ -388,6 +392,7 @@ function getMemberInfo(memberIdProp: any, item?: IAcademicQualification | null):
     code,
     nationalCode,
     isCompany: isCompanyOnly,
+    profileImage,
   };
 }
 
@@ -644,21 +649,19 @@ function getStatusLabel(status?: string): string {
                 >
                   <!-- Avatar Icon / Initial -->
                   <div
-                    :class="[
-                      'w-9 h-9 rounded-xl font-bold flex items-center justify-center shrink-0 text-xs shadow-2xs mt-0.5 transition-colors',
-                      getMemberInfo(item.memberId, item).isCompany && !getMemberInfo(item.memberId, item).personName
-                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/60'
-                        : 'bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400 group-hover:bg-purple-100 dark:group-hover:bg-purple-900/60'
-                    ]"
+                    v-if="getMemberInfo(item.memberId, item).isCompany && !getMemberInfo(item.memberId, item).personName"
+                    class="w-9 h-9 rounded-xl font-bold flex items-center justify-center shrink-0 text-xs shadow-2xs mt-0.5 transition-colors bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/60"
                   >
-                    <Building2
-                      v-if="getMemberInfo(item.memberId, item).isCompany && !getMemberInfo(item.memberId, item).personName"
-                      class="w-4 h-4"
-                    />
-                    <span v-else>
-                      {{ getMemberInfo(item.memberId, item).displayName[0] || 'ع' }}
-                    </span>
+                    <Building2 class="w-4 h-4" />
                   </div>
+                  <MemberAvatar
+                    v-else
+                    :profile-image="getMemberInfo(item.memberId, item).profileImage"
+                    :full-name="getMemberInfo(item.memberId, item).displayName"
+                    size="sm"
+                    shape="rounded"
+                    class="mt-0.5"
+                  />
 
                   <!-- Details -->
                   <div class="space-y-0.5">

@@ -81,6 +81,7 @@ export interface Member {
   fatherName?: string;
   gender?: Gender;
   birthDate?: string;
+  profileImage?: string;
   status: MemberStatus;
   membershipTypeId: string | MembershipType;
   specializationId: string | Specialization;
@@ -106,6 +107,7 @@ export interface CreateMemberInput {
   fatherName?: string;
   gender?: Gender;
   birthDate?: string;
+  profileImage?: string;
   membershipTypeId: string;
   specializationId: string;
   rankId?: string;
@@ -122,6 +124,7 @@ export interface UpdateMemberInput {
   fatherName?: string;
   gender?: Gender;
   birthDate?: string;
+  profileImage?: string;
   status?: MemberStatus;
   membershipTypeId?: string;
   specializationId?: string;

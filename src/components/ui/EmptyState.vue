@@ -11,7 +11,6 @@ interface Props {
 withDefaults(defineProps<Props>(), {
   title: 'هیچ داده‌ای یافت نشد',
   description: 'موردی برای نمایش در این بخش وجود ندارد.',
-  icon: Inbox,
 });
 </script>
 
@@ -21,7 +20,7 @@ withDefaults(defineProps<Props>(), {
     dir="rtl"
   >
     <div class="p-4 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-2xl mb-4">
-      <component :is="icon" class="w-8 h-8" />
+      <component :is="icon || Inbox" class="w-8 h-8" />
     </div>
 
     <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200">
@@ -32,8 +31,9 @@ withDefaults(defineProps<Props>(), {
       {{ description }}
     </p>
 
-    <div v-if="$slots.action" class="mt-5">
+    <div v-if="$slots.action || $slots.actions" class="mt-5">
       <slot name="action" />
+      <slot name="actions" />
     </div>
   </div>
 </template>

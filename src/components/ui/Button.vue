@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-vue-next';
 
 interface Props {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
-  size?: 'sm' | 'md' | 'lg' | 'icon';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'icon' | 'icon-sm' | 'icon-xs';
   loading?: boolean;
   disabled?: boolean;
   type?: 'button' | 'submit' | 'reset';
@@ -39,6 +39,8 @@ const variantClasses = computed(() => {
 
 const sizeClasses = computed(() => {
   switch (props.size) {
+    case 'xs':
+      return 'h-8 px-2.5 text-xs gap-1.5 rounded-lg';
     case 'sm':
       return 'h-9 px-3.5 text-xs gap-1.5 rounded-lg';
     case 'md':
@@ -46,7 +48,11 @@ const sizeClasses = computed(() => {
     case 'lg':
       return 'h-12 px-5 text-base gap-2.5 rounded-xl';
     case 'icon':
-      return 'h-10 w-10 p-0 rounded-lg justify-center';
+      return 'h-10 w-10 p-0 rounded-lg justify-center shrink-0';
+    case 'icon-sm':
+      return 'h-8 w-8 p-0 rounded-lg justify-center shrink-0';
+    case 'icon-xs':
+      return 'h-7 w-7 p-0 rounded-md justify-center shrink-0';
     default:
       return '';
   }

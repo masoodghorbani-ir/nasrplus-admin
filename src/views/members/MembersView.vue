@@ -19,6 +19,8 @@ import {
   MapPin,
   Phone,
   GraduationCap,
+  Camera,
+  Award,
 } from 'lucide-vue-next';
 import {
   Button,
@@ -31,6 +33,7 @@ import {
   EmptyState,
   Skeleton,
   TableActions,
+  MemberAvatar,
 } from '@/components/ui';
 import {
   toPersianDigits,
@@ -43,6 +46,8 @@ import MemberDetailDrawer from './MemberDetailDrawer.vue';
 import MemberImportModal from './MemberImportModal.vue';
 import MemberContactsModal from './MemberContactsModal.vue';
 import MemberQualificationsModal from './MemberQualificationsModal.vue';
+import MemberSkillsModal from './MemberSkillsModal.vue';
+import MemberPhotoModal from './components/MemberPhotoModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -93,6 +98,7 @@ const isImportModalOpen = ref(false);
 
 const isDetailDrawerOpen = ref(false);
 const viewingMemberId = ref<string | null>(null);
+const detailDrawerInitialTab = ref<'info' | 'addresses' | 'telephones' | 'qualifications' | 'skills'>('info');
 
 const isContactsModalOpen = ref(false);
 const managingContactsMember = ref<Member | null>(null);
@@ -110,6 +116,31 @@ const managingQualificationsMember = ref<Member | null>(null);
 function openQualificationsModal(member: Member) {
   managingQualificationsMember.value = member;
   isQualificationsModalOpen.value = true;
+}
+
+const isSkillsModalOpen = ref(false);
+const managingSkillsMember = ref<Member | null>(null);
+
+function openSkillsModal(member: Member) {
+  managingSkillsMember.value = member;
+  isSkillsModalOpen.value = true;
+}
+
+const isPhotoModalOpen = ref(false);
+const managingPhotoMember = ref<Member | null>(null);
+const photoTimestamp = ref(Date.now());
+
+function openPhotoModalForMember(member: Member) {
+  managingPhotoMember.value = member;
+  isPhotoModalOpen.value = true;
+}
+
+function handlePhotoUpdated(updatedPhotoPath: string) {
+  if (managingPhotoMember.value) {
+    managingPhotoMember.value.profileImage = updatedPhotoPath;
+  }
+  photoTimestamp.value = Date.now();
+  loadMembers();
 }
 
 function getMemberLatestDegree(member: Member): string {
@@ -224,8 +255,9 @@ function openEditModal(m: Member) {
   isFormModalOpen.value = true;
 }
 
-function openDetailDrawer(memberId: string) {
+function openDetailDrawer(memberId: string, initialTab: 'info' | 'addresses' | 'telephones' | 'qualifications' | 'skills' = 'info') {
   viewingMemberId.value = memberId;
+  detailDrawerInitialTab.value = initialTab;
   isDetailDrawerOpen.value = true;
 }
 
@@ -606,8 +638,25 @@ onMounted(async () => {
               <!-- Full Name & Avatar -->
               <td class="py-3.5 px-4 font-medium text-slate-900 dark:text-slate-100">
                 <div class="flex items-center gap-2.5">
-                  <div class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold flex items-center justify-center text-xs">
-                    {{ member.firstName ? member.firstName[0] : 'ع' }}
+                  <div
+                    class="relative group cursor-pointer shrink-0"
+                    title="مدیریت تصویر پرسنلی"
+                    @click="openPhotoModalForMember(member)"
+                  >
+                    <MemberAvatar
+                      :profile-image="member.profileImage"
+                      :full-name="`${member.firstName || ''} ${member.lastName || ''}`.trim()"
+                      :status="member.status"
+                      size="sm"
+                      shape="circle"
+                      show-status
+                      :timestamp="photoTimestamp"
+                    />
+                    <div
+                      class="absolute inset-0 bg-black/45 rounded-full opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white"
+                    >
+                      <Camera class="w-3.5 h-3.5" />
+                    </div>
                   </div>
                   <div>
                     <span>{{ member.firstName || '' }} {{ member.lastName || '' }}</span>
@@ -685,6 +734,16 @@ onMounted(async () => {
                       onClick: () => openEditModal(member),
                     },
                     {
+                      label: 'تصویر پرسنلی',
+                      icon: Camera,
+                      onClick: () => openPhotoModalForMember(member),
+                    },
+                    {
+                      label: 'مهارت‌ها و تخصص‌ها',
+                      icon: Award,
+                      onClick: () => openSkillsModal(member),
+                    },
+                    {
                       label: 'مدارک دانشگاهی',
                       icon: GraduationCap,
                       onClick: () => openQualificationsModal(member),
@@ -741,6 +800,7 @@ onMounted(async () => {
     <MemberDetailDrawer
       v-model:open="isDetailDrawerOpen"
       :member-id="viewingMemberId"
+      :initial-tab="detailDrawerInitialTab"
       @edit="openEditModal"
       @updated="loadMembers"
     />
@@ -760,6 +820,13 @@ onMounted(async () => {
       @updated="loadMembers"
     />
 
+    <!-- Member Skills & Specializations Modal -->
+    <MemberSkillsModal
+      v-model:open="isSkillsModalOpen"
+      :member="managingSkillsMember"
+      @updated="loadMembers"
+    />
+
     <!-- Delete Confirmation Dialog -->
     <ConfirmDialog
       :open="Boolean(memberToDelete)"
@@ -770,6 +837,18 @@ onMounted(async () => {
       :loading="isDeleting"
       @confirm="handleDeleteMember"
       @cancel="memberToDelete = null"
+    />
+
+    <!-- Member Photo Manager Modal -->
+    <MemberPhotoModal
+      v-if="managingPhotoMember"
+      :is-open="isPhotoModalOpen"
+      :member-id="managingPhotoMember._id"
+      :member-name="`${managingPhotoMember.firstName || ''} ${managingPhotoMember.lastName || ''}`.trim() || managingPhotoMember.memberCode"
+      :current-photo="managingPhotoMember.profileImage"
+      :current-timestamp="photoTimestamp"
+      @close="isPhotoModalOpen = false"
+      @updated="handlePhotoUpdated"
     />
   </div>
 </template>

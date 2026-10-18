@@ -14,6 +14,7 @@ import {
   X,
   ExternalLink,
   GraduationCap,
+  Award,
 } from 'lucide-vue-next';
 
 interface NavItem {
@@ -113,6 +114,13 @@ const isQualificationsDeskActive = computed(() => {
   return (
     route.path.startsWith('/admin/members/qualifications') ||
     route.path.startsWith('/admin/members/academic-qualifications')
+  );
+});
+
+const isSkillsDeskActive = computed(() => {
+  return (
+    route.path.startsWith('/admin/members/skills') ||
+    route.path.startsWith('/members/skills')
   );
 });
 
@@ -319,6 +327,21 @@ function navigateToMembers(typeId?: string) {
                 >
                   <GraduationCap class="w-3.5 h-3.5 shrink-0" />
                   <span class="truncate">کارتابل بررسی مدارک تحصیلی</span>
+                </button>
+
+                <!-- 3. Member Skills & Specializations Verification Desk -->
+                <button
+                  type="button"
+                  :class="[
+                    'w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer text-right',
+                    isSkillsDeskActive
+                      ? 'bg-brand-600 text-white font-bold shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-slate-200 font-medium',
+                  ]"
+                  @click="navigateTo('/admin/members/skills')"
+                >
+                  <Award class="w-3.5 h-3.5 shrink-0" />
+                  <span class="truncate">کارتابل بررسی مهارت‌ها و گواهی‌ها</span>
                 </button>
 
                 <!-- 3..N. Membership Types -->

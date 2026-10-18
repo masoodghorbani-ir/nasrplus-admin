@@ -47,15 +47,19 @@ import {
   Building2,
   ShieldCheck,
   FileText,
+  Camera,
 } from 'lucide-vue-next';
 import { extractErrorMessage } from '@/utils/errors';
 import { getStoredMemberQualifications } from '@/utils/qualifications';
+import { getStoredMemberSkills } from '@/utils/skills';
 import MemberQualificationsTab from './components/MemberQualificationsTab.vue';
+import MemberSkillsTab from './components/MemberSkillsTab.vue';
+import { MemberAvatar, MemberPhotoModal } from './components';
 
 interface Props {
   open: boolean;
   memberId: string | null;
-  initialTab?: 'info' | 'addresses' | 'telephones' | 'qualifications';
+  initialTab?: 'info' | 'addresses' | 'telephones' | 'qualifications' | 'skills';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -75,7 +79,8 @@ const notificationStore = useNotificationStore();
 
 const member = ref<Member | null>(null);
 const isLoading = ref(false);
-const activeTab = ref<'info' | 'addresses' | 'telephones' | 'qualifications'>(props.initialTab);
+const activeTab = ref<'info' | 'addresses' | 'telephones' | 'qualifications' | 'skills'>(props.initialTab);
+const memberSkillsCount = ref(0);
 
 // Address management state
 const addresses = ref<MemberAddress[]>([]);
@@ -104,6 +109,27 @@ const phoneTitleInput = ref('');
 const isPrimaryPhone = ref(false);
 const isSavingPhone = ref(false);
 const phoneToDelete = ref<string | null>(null);
+
+// Member Photo modal state & cache busting
+const isPhotoModalOpen = ref(false);
+const photoTimestamp = ref(Date.now());
+
+function openPhotoModal() {
+  isPhotoModalOpen.value = true;
+}
+
+function handlePhotoUpdated(updatedPhotoPath: string) {
+  if (member.value) {
+    member.value.profileImage = updatedPhotoPath;
+  }
+  photoTimestamp.value = Date.now();
+  emit('updated');
+}
+
+const memberFullName = computed(() => {
+  if (!member.value) return '';
+  return `${member.value.firstName || ''} ${member.value.lastName || ''}`.trim() || member.value.memberCode;
+});
 
 const memberAcademicQualification = computed(() => {
   if (!member.value) return null;
@@ -197,6 +223,23 @@ async function loadMemberDetails() {
   }
 }
 
+async function loadMemberSkillsCount() {
+  if (!props.memberId) {
+    memberSkillsCount.value = 0;
+    return;
+  }
+  try {
+    const res = await membersApi.getMemberSkills(props.memberId);
+    if (res?.data && Array.isArray(res.data)) {
+      memberSkillsCount.value = res.data.length;
+    } else {
+      memberSkillsCount.value = getStoredMemberSkills(props.memberId).length;
+    }
+  } catch {
+    memberSkillsCount.value = getStoredMemberSkills(props.memberId).length;
+  }
+}
+
 watch(
   () => props.open,
   (val) => {
@@ -204,6 +247,7 @@ watch(
       activeTab.value = props.initialTab || 'info';
       lookupsStore.fetchAllLookups();
       loadMemberDetails();
+      loadMemberSkillsCount();
     } else {
       member.value = null;
       companyDetails.value = null;
@@ -467,17 +511,33 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
     <template #header>
       <div v-if="member" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full pl-6">
         <div class="flex items-center gap-3.5">
-          <!-- Avatar Icon / Initial -->
+          <!-- Avatar with photo edit trigger -->
           <div
-            :class="[
-              'w-12 h-12 rounded-2xl font-black flex items-center justify-center text-base shadow-sm shrink-0',
-              companyDetails && !member.firstName
-                ? 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white'
-                : 'bg-gradient-to-br from-brand-600 to-brand-700 text-white'
-            ]"
+            v-if="companyDetails && !member.firstName && !member.lastName"
+            class="w-12 h-12 rounded-2xl font-black flex items-center justify-center text-base shadow-sm shrink-0 bg-gradient-to-br from-blue-600 to-indigo-700 text-white"
           >
-            <Building2 v-if="companyDetails && !member.firstName" class="w-6 h-6" />
-            <span v-else>{{ member.firstName ? member.firstName[0] : (companyDetails?.title ? companyDetails.title[0] : 'ع') }}</span>
+            <Building2 class="w-6 h-6" />
+          </div>
+          <div
+            v-else
+            class="relative group cursor-pointer shrink-0"
+            title="مدیریت تصویر پرسنلی"
+            @click="openPhotoModal"
+          >
+            <MemberAvatar
+              :profile-image="member.profileImage"
+              :full-name="memberFullName"
+              :status="member.status"
+              size="md"
+              shape="rounded"
+              show-status
+              :timestamp="photoTimestamp"
+            />
+            <div
+              class="absolute inset-0 bg-black/45 rounded-xl opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white"
+            >
+              <Camera class="w-4 h-4" />
+            </div>
           </div>
 
           <!-- Member Name, Code & Subtitles -->
@@ -519,6 +579,16 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
 
         <!-- Header Actions -->
         <div class="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            class="text-xs"
+            @click="openPhotoModal"
+          >
+            <Camera class="w-3.5 h-3.5 ml-1 text-slate-500" />
+            تصویر پرسنلی
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -660,10 +730,96 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
             {{ toPersianDigits(member.academicQualifications.length) }}
           </span>
         </button>
+
+        <button
+          type="button"
+          :class="[
+            'flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap border outline-none focus:outline-none focus-visible:outline-none focus:ring-0 active:outline-none select-none',
+            activeTab === 'skills'
+              ? 'bg-white dark:bg-slate-900 text-brand-700 dark:text-brand-300 shadow-2xs border-brand-200/80 dark:border-brand-800/80'
+              : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-800/50',
+          ]"
+          @click="activeTab = 'skills'"
+        >
+          <Award class="w-4 h-4 text-brand-600 dark:text-brand-400" />
+          مهارت‌ها و تخصص‌ها
+          <span
+            v-if="memberSkillsCount"
+            class="px-1.5 py-0.2 rounded-full bg-brand-100 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 text-[10px] tabular-nums font-bold"
+          >
+            {{ toPersianDigits(memberSkillsCount) }}
+          </span>
+        </button>
       </div>
 
-      <!-- Tab 1: Info -->
       <div v-if="activeTab === 'info'" class="space-y-6">
+        <!-- Tab 1: Info -->
+        <!-- Personal Photo & Identification Card -->
+        <div class="p-4 sm:p-5 bg-gradient-to-l from-slate-50 to-brand-50/20 dark:from-slate-800/60 dark:to-brand-950/20 border border-slate-200/80 dark:border-slate-800 rounded-2xl flex flex-col sm:flex-row items-center sm:items-start gap-5">
+          <!-- Portrait Avatar (3:4 ratio) with hover overlay -->
+          <div
+            class="relative group shrink-0 cursor-pointer shadow-md rounded-2xl overflow-hidden"
+            title="برای تغییر یا بارگذاری عکس پرسنلی کلیک کنید"
+            @click="openPhotoModal"
+          >
+            <MemberAvatar
+              :profile-image="member.profileImage"
+              :full-name="memberFullName"
+              :status="member.status"
+              size="xl"
+              shape="portrait"
+              show-status
+              :timestamp="photoTimestamp"
+            />
+            <div
+              class="absolute inset-0 bg-black/55 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition duration-200 flex flex-col items-center justify-center text-white text-xs gap-1.5 p-2 text-center"
+            >
+              <Camera class="w-6 h-6" />
+              <span class="font-bold">{{ member.profileImage ? 'تغییر تصویر' : 'بارگذاری تصویر' }}</span>
+            </div>
+          </div>
+
+          <!-- Member identification details & actions -->
+          <div class="flex-1 space-y-3 text-center sm:text-right w-full">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div>
+                <h3 class="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100">
+                  {{ member.firstName || '' }} {{ member.lastName || '' }}
+                  <span v-if="!member.firstName && !member.lastName && companyDetails?.title">
+                    {{ companyDetails.title }}
+                  </span>
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">
+                  کد عضویت نظام صنفی: <span class="font-mono font-bold text-brand-600 dark:text-brand-400 tabular-nums">{{ toPersianDigits(member.memberCode) }}</span>
+                </p>
+              </div>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                class="text-xs shrink-0 self-center sm:self-auto"
+                @click="openPhotoModal"
+              >
+                <Camera class="w-3.5 h-3.5 ml-1.5 text-brand-600 dark:text-brand-400" />
+                {{ member.profileImage ? 'مدیریت و تغییر تصویر پرسنلی' : 'افزودن تصویر پرسنلی' }}
+              </Button>
+            </div>
+
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              تصویر پرسنلی عضو با تناسب ابعاد ۳ به ۴ در کارت هوشمند عضویت، سامانه استعلام پروانه‌ها و گواهی‌نامه‌های رسمی صادرشده از سوی سازمان نظام صنفی رایانه‌ای نمایش داده می‌شود.
+            </p>
+
+            <div class="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-slate-400">
+              <span v-if="member.profileImage" class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
+                ✓ عکس پرسنلی تاییدشده ثبت گردیده است
+              </span>
+              <span v-else class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold">
+                ⚠ هنوز تصویری برای این عضو بارگذاری نشده است
+              </span>
+            </div>
+          </div>
+        </div>
+
         <!-- Personal info Section -->
         <div>
           <h4 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -958,6 +1114,55 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
           </div>
         </div>
 
+        <!-- Skills & Specializations Overview Box -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Award class="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              مهارت‌ها، تخصص‌ها و گواهینامه‌های رسمی
+            </h3>
+            <button
+              type="button"
+              class="text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline cursor-pointer"
+              @click="activeTab = 'skills'"
+            >
+              مدیریت و کارشناسی ({{ toPersianDigits(memberSkillsCount) }})
+            </button>
+          </div>
+
+          <div
+            class="p-4 bg-gradient-to-l from-slate-50 to-purple-50/20 dark:from-slate-800/40 dark:to-purple-950/20 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-xs flex items-center justify-between gap-3 cursor-pointer hover:border-purple-300 transition"
+            @click="activeTab = 'skills'"
+          >
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 flex items-center justify-center font-bold shrink-0">
+                <Award class="w-4 h-4" />
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 dark:text-slate-200">
+                  <span v-if="memberSkillsCount > 0">
+                    {{ toPersianDigits(memberSkillsCount) }} مهارت و تخصص ثبت شده در پرونده عضو
+                  </span>
+                  <span v-else class="text-slate-500">
+                    هنوز مهارتی برای این عضو ثبت نشده است
+                  </span>
+                </p>
+                <p class="text-2xs text-slate-400 mt-0.5">
+                  ارزیابی خوداظهاری، گواهینامه‌های رسمی دوره‌ها و تائید کارشناس صنف
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-brand-600 dark:text-brand-400 shadow-2xs hover:bg-brand-50 shrink-0 cursor-pointer"
+              @click.stop="activeTab = 'skills'"
+            >
+              مشاهده برگه مهارت‌ها ←
+            </button>
+          </div>
+        </div>
+
         <!-- Notes if any -->
         <div v-if="member.notes" class="p-4 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900 rounded-2xl text-xs space-y-1">
           <span class="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
@@ -970,8 +1175,8 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
         </div>
       </div>
 
-      <!-- Tab 2: Addresses -->
       <div v-else-if="activeTab === 'addresses'" class="space-y-4">
+        <!-- Tab 2: Addresses -->
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold text-slate-500">فهرست نشانی‌های ثبت‌شده</span>
           <Button variant="primary" size="sm" @click="openAddAddressModal">
@@ -1073,8 +1278,8 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
         </div>
       </div>
 
-      <!-- Tab 3: Telephones -->
       <div v-else-if="activeTab === 'telephones'" class="space-y-4">
+        <!-- Tab 3: Telephones -->
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold text-slate-500">شماره‌های تماس و ارتباطی</span>
           <Button variant="primary" size="sm" @click="openAddPhoneModal">
@@ -1174,13 +1379,23 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
         </div>
       </div>
 
-      <!-- Tab 4: Academic Qualifications -->
       <div v-else-if="activeTab === 'qualifications'" class="space-y-4">
+        <!-- Tab 4: Academic Qualifications -->
         <MemberQualificationsTab
           v-if="member && member._id"
           :member-id="member._id"
           :member="member"
           @updated="loadMemberDetails(); emit('updated');"
+        />
+      </div>
+
+      <div v-else-if="activeTab === 'skills'" class="space-y-4">
+        <!-- Tab 5: Member Skills & Specializations -->
+        <MemberSkillsTab
+          v-if="member && member._id"
+          :member-id="member._id"
+          :member="member"
+          @updated="loadMemberDetails(); loadMemberSkillsCount(); emit('updated');"
         />
       </div>
     </div>
@@ -1358,5 +1573,17 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
     variant="danger"
     @confirm="handleDeleteTelephone"
     @cancel="phoneToDelete = null"
+  />
+
+  <!-- Member Photo Manager Modal -->
+  <MemberPhotoModal
+    v-if="member"
+    :is-open="isPhotoModalOpen"
+    :member-id="member._id"
+    :member-name="memberFullName"
+    :current-photo="member.profileImage"
+    :current-timestamp="photoTimestamp"
+    @close="isPhotoModalOpen = false"
+    @updated="handlePhotoUpdated"
   />
 </template>

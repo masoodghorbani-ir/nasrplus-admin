@@ -121,6 +121,16 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'members/skills',
+        name: 'MemberSkillsDesk',
+        component: () => import('@/views/members/MemberSkillsDeskView.vue'),
+        meta: {
+          requiresAuth: true,
+          title: 'کارتابل بررسی مهارت‌ها و گواهینامه‌های اعضا',
+          permission: 'members:read',
+        },
+      },
+      {
         path: 'members/academic-qualifications',
         redirect: '/admin/members/qualifications',
       },
@@ -165,6 +175,14 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/members',
     redirect: '/admin/members',
+  },
+  {
+    path: '/members/skills',
+    redirect: '/admin/members/skills',
+  },
+  {
+    path: '/members/qualifications',
+    redirect: '/admin/members/qualifications',
   },
   {
     path: '/companies',

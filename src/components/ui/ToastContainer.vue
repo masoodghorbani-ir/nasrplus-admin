@@ -58,7 +58,7 @@ function getStyles(type: string) {
 <template>
   <Teleport to="body">
     <div
-      class="fixed bottom-4 left-4 z-[70] flex flex-col gap-2 max-w-sm w-full pointer-events-none"
+      class="fixed bottom-4 left-4 z-[100] flex flex-col gap-2 max-w-sm w-full pointer-events-none"
       dir="rtl"
     >
       <TransitionGroup

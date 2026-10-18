@@ -13,3 +13,5 @@ export { default as EmptyState } from './EmptyState.vue';
 export { default as Skeleton } from './Skeleton.vue';
 export { default as TableActions, type ActionItem } from './TableActions.vue';
 export { default as CategoryCard, type CategoryColor } from './CategoryCard.vue';
+export { default as MemberAvatar } from './MemberAvatar.vue';
+
