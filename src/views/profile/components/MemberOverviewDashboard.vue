@@ -13,7 +13,6 @@ import {
   Clock,
   CheckCircle2,
   ArrowLeft,
-  ChevronLeft,
   ShieldCheck,
   BadgeCheck,
 } from 'lucide-vue-next';
@@ -60,6 +59,18 @@ const avgSkillPercentage = computed(() => {
   return Math.round(sum / skills.value.length);
 });
 
+const identityMeta = computed(() => {
+  const items: string[] = [];
+  const specialization = lookupsStore.getSpecializationTitle(props.member.specializationId);
+  if (specialization && specialization !== '—') items.push(specialization);
+  const nature = lookupsStore.getNatureTitle(props.member.natureOfMembership);
+  if (nature && nature !== '—') items.push(nature);
+  if (props.member.membershipDate) {
+    items.push(`عضویت از ${formatPersianDate(props.member.membershipDate)}`);
+  }
+  return items;
+});
+
 async function loadOverviewData() {
   if (!props.member?._id) return;
   isLoadingStats.value = true;
@@ -88,345 +99,214 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6 sm:space-y-8 select-none" dir="rtl">
-    <!-- 1 & 2. Hero Profile Banner & Guild Rank Showcase (Side by Side) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-stretch">
-      <!-- Right (in RTL): Hero Profile Welcome Banner (7 columns) -->
-      <div
-        class="lg:col-span-7 relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-700 to-brand-700 p-5 sm:p-6 text-white shadow-xl shadow-emerald-950/20 flex flex-col justify-between"
-      >
-        <!-- Background Decorative Circles -->
-        <div class="absolute -top-16 -left-16 w-56 h-56 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-        <div class="absolute -bottom-16 -right-16 w-56 h-56 rounded-full bg-brand-400/15 blur-2xl pointer-events-none" />
+  <div class="space-y-6 select-none" dir="rtl">
+    <!-- Identity + Rank -->
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+      <section class="portal-panel p-5 sm:p-6 lg:col-span-7">
+        <div class="flex flex-col gap-5 sm:flex-row sm:items-start">
+          <button
+            type="button"
+            class="group relative mx-auto shrink-0 cursor-pointer sm:mx-0"
+            title="تغییر عکس پرسنلی"
+            @click="emit('openPhoto')"
+          >
+            <MemberAvatar
+              :profile-image="member.profileImage"
+              :full-name="memberAuthStore.memberFullName"
+              size="xl"
+              shape="portrait"
+              :timestamp="memberAuthStore.photoTimestamp"
+              class="border border-slate-200 dark:border-slate-700"
+            />
+            <span
+              class="absolute inset-0 flex items-center justify-center rounded-2xl bg-slate-900/45 text-white opacity-0 transition-opacity group-hover:opacity-100"
+            >
+              <Camera class="h-5 w-5" />
+            </span>
+          </button>
 
-        <div class="relative z-10 flex flex-col justify-between h-full gap-5">
-          <!-- Photo and Identity Info -->
-          <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-right">
-            <div class="relative group cursor-pointer shrink-0" @click="emit('openPhoto')">
-              <MemberAvatar
-                :profile-image="member.profileImage"
-                :full-name="memberAuthStore.memberFullName"
-                size="xl"
-                shape="portrait"
-                :timestamp="memberAuthStore.photoTimestamp"
-                class="border-4 border-white/30 shadow-xl group-hover:scale-102 transition-transform duration-300"
-              />
-              <div
-                class="absolute inset-0 bg-slate-900/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
-                title="تغییر عکس پرسنلی"
-              >
-                <Camera class="w-6 h-6" />
-              </div>
-            </div>
-
-            <div class="space-y-2 flex-1 min-w-0">
-              <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+          <div class="min-w-0 flex-1 space-y-4 text-center sm:text-right">
+            <div class="space-y-2">
+              <div class="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                 <span
-                  class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/20 backdrop-blur-xs text-white border border-white/25"
+                  :class="[
+                    'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium',
+                    memberAuthStore.statusConfig.bgClass,
+                  ]"
                 >
-                  کد عضویت: {{ toPersianDigits(member.memberCode) }}
-                </span>
-
-                <span
-                  v-if="member.nationalCode"
-                  class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-white/10 text-emerald-100 border border-white/15"
-                >
-                  کد ملی: {{ toPersianDigits(member.nationalCode) }}
-                </span>
-
-                <span
-                  class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-400 text-emerald-950 shadow-xs"
-                >
+                  <span
+                    class="h-1.5 w-1.5 rounded-full"
+                    :class="memberAuthStore.statusConfig.dotClass"
+                  />
                   {{ memberAuthStore.statusConfig.label }}
                 </span>
               </div>
 
-              <h1 class="text-lg sm:text-xl font-bold text-white truncate">
+              <h1 class="truncate text-xl font-semibold text-slate-900 dark:text-slate-50 sm:text-2xl">
                 {{ memberAuthStore.memberFullName }}
               </h1>
 
-              <div class="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4 text-xs text-emerald-100/90 pt-1 font-normal">
-                <span class="inline-flex items-center gap-1.5">
-                  <Building2 class="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-                  رسته: {{ lookupsStore.getSpecializationTitle(member.specializationId) }}
-                </span>
+              <dl class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 sm:justify-start">
+                <div class="inline-flex items-center gap-1.5">
+                  <dt class="sr-only">کد عضویت</dt>
+                  <dd class="tabular-nums">کد عضویت {{ toPersianDigits(member.memberCode) }}</dd>
+                </div>
+                <div v-if="member.nationalCode" class="inline-flex items-center gap-1.5">
+                  <dt class="sr-only">کد ملی</dt>
+                  <dd class="tabular-nums">کد ملی {{ toPersianDigits(member.nationalCode) }}</dd>
+                </div>
+              </dl>
 
-                <span class="inline-flex items-center gap-1.5">
-                  <BadgeCheck class="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-                  ماهیت: {{ lookupsStore.getNatureTitle(member.natureOfMembership) }}
-                </span>
-
-                <span v-if="member.membershipDate" class="inline-flex items-center gap-1.5">
-                  <Calendar class="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-                  عضویت از: {{ formatPersianDate(member.membershipDate) }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Bottom Action Buttons in Hero Banner -->
-          <div class="pt-3 border-t border-white/15 flex flex-wrap items-center justify-between gap-3">
-            <span class="text-2xs text-emerald-100/80 font-normal hidden sm:inline">
-              پرتال جامع خدمات الکترونیکی سازمان نصر
-            </span>
-
-            <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-              <button
-                type="button"
-                class="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-white text-xs font-semibold border border-white/30 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs hover:scale-102"
-                @click="emit('openPhoto')"
+              <p
+                v-if="identityMeta.length"
+                class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400 sm:justify-start"
               >
-                <Camera class="w-4 h-4" />
-                <span>ویرایش تصویر</span>
-              </button>
+                <span
+                  v-for="(item, index) in identityMeta"
+                  :key="index"
+                  class="inline-flex items-center gap-1.5"
+                >
+                  <Building2 v-if="index === 0" class="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <BadgeCheck v-else-if="index === 1" class="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <Calendar v-else class="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  {{ item }}
+                </span>
+              </p>
+            </div>
 
+            <div class="flex flex-wrap items-center justify-center gap-2 border-t border-slate-100 pt-4 dark:border-slate-800 sm:justify-start">
               <button
                 type="button"
-                class="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 text-xs font-semibold shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer hover:scale-102"
+                class="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 text-xs font-medium text-white transition hover:bg-brand-700"
                 @click="emit('navigate', 'info')"
               >
                 <span>مشاهده پرونده کامل</span>
-                <ArrowLeft class="w-4 h-4" />
+                <ArrowLeft class="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                class="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                @click="emit('openPhoto')"
+              >
+                <Camera class="h-4 w-4" />
+                <span>ویرایش تصویر</span>
               </button>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Left (in RTL): Prominent Guild Rank Showcase Card (5 columns) -->
-      <div class="lg:col-span-5 flex">
-        <MemberRankCard :member="member" class="w-full" />
+      <div class="lg:col-span-5">
+        <MemberRankCard :member="member" class="h-full" />
       </div>
     </div>
 
-    <!-- 3. Key Stat Cards Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-      <!-- Card A: Qualifications -->
-      <div
-        class="group p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-emerald-500/50 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-[185px]"
-        @click="emit('navigate', 'qualifications')"
-      >
-        <div class="flex items-center justify-between">
-          <div
-            class="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/70 dark:border-emerald-800 flex items-center justify-center group-hover:scale-105 transition-transform"
-          >
-            <GraduationCap class="w-5 h-5" />
-          </div>
-          <span class="text-3xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200/70 dark:border-emerald-800">
-            مدارک دانشگاهی
-          </span>
-        </div>
-
-        <div>
-          <div class="flex items-baseline gap-2">
-            <span class="text-2xl font-bold text-slate-800 dark:text-slate-100 tabular-nums">
-              {{ toPersianDigits(qualifications.length) }}
-            </span>
-            <span class="text-xs text-slate-500 dark:text-slate-400 font-normal">مدرک ثبت‌شده</span>
-          </div>
-
-          <!-- Approval breakdown -->
-          <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-            <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
-              <CheckCircle2 class="w-3.5 h-3.5" />
-              {{ toPersianDigits(approvedQualsCount) }} تائید شده
-            </span>
-            <span class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-normal">
-              <Clock class="w-3.5 h-3.5" />
-              {{ toPersianDigits(pendingQualsCount) }} در انتظار
-            </span>
-          </div>
-        </div>
+    <!-- Metrics -->
+    <section aria-label="خلاصه وضعیت پرونده">
+      <div class="mb-3 flex items-end justify-between gap-3">
+        <h2 class="portal-section-title">خلاصه وضعیت پرونده</h2>
+        <span v-if="isLoadingStats" class="portal-muted">در حال به‌روزرسانی…</span>
       </div>
 
-      <!-- Card B: Skills & Certificates -->
-      <div
-        class="group p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-brand-500/50 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-[185px]"
-        @click="emit('navigate', 'skills')"
-      >
-        <div class="flex items-center justify-between">
-          <div
-            class="w-11 h-11 rounded-2xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 border border-brand-200/70 dark:border-brand-800 flex items-center justify-center group-hover:scale-105 transition-transform"
-          >
-            <Sparkles class="w-5 h-5" />
-          </div>
-          <span class="text-3xs font-semibold px-2.5 py-0.5 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-400 border border-brand-200/70 dark:border-brand-800">
-            تخصص‌ها و مهارت‌ها
-          </span>
-        </div>
-
-        <div>
-          <div class="flex items-baseline gap-2">
-            <span class="text-2xl font-bold text-slate-800 dark:text-slate-100 tabular-nums">
-              {{ toPersianDigits(skills.length) }}
-            </span>
-            <span class="text-xs text-slate-500 dark:text-slate-400 font-normal">مهارت و تخصص</span>
-          </div>
-
-          <!-- Skill Approval breakdown -->
-          <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-            <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
-              <CheckCircle2 class="w-3.5 h-3.5" />
-              {{ toPersianDigits(approvedSkillsCount) }} تائید شده
-            </span>
-            <span class="inline-flex items-center gap-1 text-brand-600 dark:text-brand-400 font-normal">
-              میانگین: {{ toPersianDigits(avgSkillPercentage) }}٪
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <button
+          type="button"
+          class="portal-panel group cursor-pointer p-4 text-right transition hover:border-slate-300 dark:hover:border-slate-700"
+          @click="emit('navigate', 'qualifications')"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-1">
+              <p class="portal-label">مدارک تحصیلی</p>
+              <p class="portal-metric">{{ toPersianDigits(qualifications.length) }}</p>
+            </div>
+            <span class="portal-icon-box">
+              <GraduationCap class="h-4 w-4" />
             </span>
           </div>
-        </div>
-      </div>
-
-      <!-- Card C: Verification Status Summary -->
-      <div
-        class="group p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-indigo-500/50 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-[185px]"
-        @click="emit('navigate', 'qualifications')"
-      >
-        <div class="flex items-center justify-between">
-          <div
-            class="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/70 dark:border-indigo-800 flex items-center justify-center group-hover:scale-105 transition-transform"
-          >
-            <ShieldCheck class="w-5 h-5" />
-          </div>
-          <span class="text-3xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border border-indigo-200/70 dark:border-indigo-800">
-            استعلام کارشناسان
-          </span>
-        </div>
-
-        <div>
-          <div class="flex items-baseline gap-2">
-            <span class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
-              {{ toPersianDigits(approvedQualsCount + approvedSkillsCount) }}
+          <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
+            <span class="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+              <CheckCircle2 class="h-3.5 w-3.5" />
+              {{ toPersianDigits(approvedQualsCount) }} تایید
             </span>
-            <span class="text-xs text-slate-500 dark:text-slate-400 font-normal">مدرک تائید نهایی</span>
+            <span class="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400">
+              <Clock class="h-3.5 w-3.5" />
+              {{ toPersianDigits(pendingQualsCount) }} انتظار
+            </span>
           </div>
+        </button>
 
-          <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
-            <span>در صف بررسی:</span>
-            <span class="font-semibold text-amber-600 dark:text-amber-400 tabular-nums">
+        <button
+          type="button"
+          class="portal-panel group cursor-pointer p-4 text-right transition hover:border-slate-300 dark:hover:border-slate-700"
+          @click="emit('navigate', 'skills')"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-1">
+              <p class="portal-label">مهارت‌ها و تخصص‌ها</p>
+              <p class="portal-metric">{{ toPersianDigits(skills.length) }}</p>
+            </div>
+            <span class="portal-icon-box">
+              <Sparkles class="h-4 w-4" />
+            </span>
+          </div>
+          <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
+            <span class="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+              <CheckCircle2 class="h-3.5 w-3.5" />
+              {{ toPersianDigits(approvedSkillsCount) }} تایید
+            </span>
+            <span class="text-slate-500 dark:text-slate-400">
+              میانگین {{ toPersianDigits(avgSkillPercentage) }}٪
+            </span>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          class="portal-panel group cursor-pointer p-4 text-right transition hover:border-slate-300 dark:hover:border-slate-700"
+          @click="emit('navigate', 'qualifications')"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-1">
+              <p class="portal-label">استعلام کارشناسان</p>
+              <p class="portal-metric">{{ toPersianDigits(approvedQualsCount + approvedSkillsCount) }}</p>
+            </div>
+            <span class="portal-icon-box">
+              <ShieldCheck class="h-4 w-4" />
+            </span>
+          </div>
+          <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
+            <span class="text-slate-500 dark:text-slate-400">در صف بررسی</span>
+            <span class="font-medium tabular-nums text-amber-700 dark:text-amber-400">
               {{ toPersianDigits(pendingQualsCount + pendingSkillsCount) }} مورد
             </span>
           </div>
-        </div>
-      </div>
+        </button>
 
-      <!-- Card D: Membership Period -->
-      <div
-        class="group p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-amber-500/50 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-[185px]"
-        @click="emit('navigate', 'info')"
-      >
-        <div class="flex items-center justify-between">
-          <div
-            class="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200/70 dark:border-amber-800 flex items-center justify-center group-hover:scale-105 transition-transform"
-          >
-            <Calendar class="w-5 h-5" />
-          </div>
-          <span class="text-3xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/70 dark:border-amber-800">
-            اعتبار پروانه
-          </span>
-        </div>
-
-        <div>
-          <div class="flex items-baseline gap-2">
-            <span class="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100 tabular-nums truncate">
-              {{ member.expiryDate ? formatPersianDate(member.expiryDate) : 'نامحدود' }}
-            </span>
-            <span class="text-xs text-slate-500 dark:text-slate-400 font-normal shrink-0">
-              {{ member.expiryDate ? 'تاریخ انقضا' : 'اعتبار پروانه' }}
+        <button
+          type="button"
+          class="portal-panel group cursor-pointer p-4 text-right transition hover:border-slate-300 dark:hover:border-slate-700"
+          @click="emit('navigate', 'info')"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-1">
+              <p class="portal-label">اعتبار پروانه</p>
+              <p class="truncate text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-50 sm:text-xl">
+                {{ member.expiryDate ? formatPersianDate(member.expiryDate) : 'نامحدود' }}
+              </p>
+            </div>
+            <span class="portal-icon-box">
+              <Calendar class="h-4 w-4" />
             </span>
           </div>
-
-          <div class="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
-            <span>وضعیت نظام:</span>
-            <span class="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 class="w-3.5 h-3.5" />
+          <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs dark:border-slate-800">
+            <span class="text-slate-500 dark:text-slate-400">وضعیت نظام</span>
+            <span class="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
+              <CheckCircle2 class="h-3.5 w-3.5" />
               {{ memberAuthStore.statusConfig.label }}
             </span>
           </div>
-        </div>
+        </button>
       </div>
-    </div>
-
-    <!-- 4. Quick Access Modules Row -->
-    <div class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100">
-          دسترسی سریع به بخش‌های پرونده
-        </h2>
-        <span class="text-xs text-slate-500 dark:text-slate-400 font-normal">
-          انتخاب و مدیریت اطلاعات
-        </span>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- Quick Option 1: Academic Qualifications -->
-        <div
-          class="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500/60 dark:hover:border-emerald-500/60 shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group"
-          @click="emit('navigate', 'qualifications')"
-        >
-          <div class="flex items-center gap-3.5">
-            <div
-              class="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200/70 dark:border-emerald-800"
-            >
-              <GraduationCap class="w-5 h-5" />
-            </div>
-            <div class="text-right">
-              <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                مدیریت مدارک تحصیلی
-              </h4>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-normal">
-                ثبت مدارک دانشگاهی و استعلام تاییدیه
-              </p>
-            </div>
-          </div>
-          <ChevronLeft class="w-5 h-5 text-slate-400 group-hover:-translate-x-1 transition-transform" />
-        </div>
-
-        <!-- Quick Option 2: Skills & Certifications -->
-        <div
-          class="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-brand-500/60 dark:hover:border-brand-500/60 shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group"
-          @click="emit('navigate', 'skills')"
-        >
-          <div class="flex items-center gap-3.5">
-            <div
-              class="w-11 h-11 rounded-2xl bg-brand-50 dark:bg-brand-950/70 text-brand-600 dark:text-brand-400 flex items-center justify-center shrink-0 border border-brand-200/70 dark:border-brand-800"
-            >
-              <Sparkles class="w-5 h-5" />
-            </div>
-            <div class="text-right">
-              <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                مهارت‌ها و گواهینامه‌ها
-              </h4>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-normal">
-                تخصص‌ها، بارگذاری مدارک و خودارزیابی
-              </p>
-            </div>
-          </div>
-          <ChevronLeft class="w-5 h-5 text-slate-400 group-hover:-translate-x-1 transition-transform" />
-        </div>
-
-        <!-- Quick Option 3: Photo Management -->
-        <div
-          class="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-indigo-500/60 dark:hover:border-indigo-500/60 shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group"
-          @click="emit('openPhoto')"
-        >
-          <div class="flex items-center gap-3.5">
-            <div
-              class="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-200/70 dark:border-indigo-800"
-            >
-              <Camera class="w-5 h-5" />
-            </div>
-            <div class="text-right">
-              <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                ویرایش تصویر پرسنلی
-              </h4>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-normal">
-                برش، تنظیم نسبت ۳:۴ و تغییر عکس
-              </p>
-            </div>
-          </div>
-          <ChevronLeft class="w-5 h-5 text-slate-400 group-hover:-translate-x-1 transition-transform" />
-        </div>
-      </div>
-    </div>
+    </section>
   </div>
 </template>

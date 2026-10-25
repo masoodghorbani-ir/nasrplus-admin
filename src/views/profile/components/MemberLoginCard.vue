@@ -3,12 +3,12 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMemberAuthStore } from '@/stores';
 import {
-  UserCheck,
   Lock,
   Eye,
   EyeOff,
   ArrowRight,
   AlertCircle,
+  Hash,
 } from 'lucide-vue-next';
 
 const router = useRouter();
@@ -45,119 +45,100 @@ function goHome() {
 </script>
 
 <template>
-  <div class="w-full max-w-xl mx-auto select-none" dir="rtl">
-    <div
-      class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-10 border border-slate-200/90 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-slate-950/50 transition-colors"
-    >
-      <!-- Top Emblem & Title -->
-      <div class="text-center mb-8">
-        <div
-          class="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/60 mx-auto flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-4 shadow-xs"
-        >
-          <UserCheck class="w-8 h-8 sm:w-10 sm:h-10" />
-        </div>
-
-        <span
-          class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/60 mb-2"
-        >
-          ویژه اعضای صنف رایانه‌ای
-        </span>
-
-        <h1 class="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100">
-          ورود به پروفایل اختصاصی اعضا
+  <div class="mx-auto w-full max-w-md select-none" dir="rtl">
+    <div class="portal-panel p-6 sm:p-8">
+      <div class="mb-6 space-y-2 text-center">
+        <h1 class="text-lg font-semibold text-slate-900 dark:text-slate-50 sm:text-xl">
+          ورود به پروفایل اعضا
         </h1>
-
-        <p class="mt-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-normal leading-relaxed">
-          ورود با <span class="font-semibold text-slate-700 dark:text-slate-200">کد عضویت</span> بعنوان نام کاربری و <span class="font-semibold text-slate-700 dark:text-slate-200">کد ملی</span> بعنوان رمز عبور
+        <p class="text-xs leading-relaxed text-slate-500 dark:text-slate-400 sm:text-sm">
+          با
+          <span class="font-medium text-slate-700 dark:text-slate-200">کد عضویت</span>
+          و
+          <span class="font-medium text-slate-700 dark:text-slate-200">کد ملی</span>
+          وارد شوید
         </p>
       </div>
 
-      <!-- Error Alert -->
       <div
         v-if="formError"
-        class="mb-6 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 text-xs font-medium flex items-center gap-2.5 animate-in fade-in"
+        class="mb-5 flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-medium text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-400"
+        role="alert"
       >
-        <AlertCircle class="w-4 h-4 shrink-0" />
+        <AlertCircle class="h-4 w-4 shrink-0" />
         <span>{{ formError }}</span>
       </div>
 
-      <!-- Login Form -->
       <form class="space-y-4" @submit.prevent="handleLogin">
-        <!-- Field 1: Member Code (Username) -->
         <div class="space-y-1.5">
-          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-            کد عضویت نظام صنفی (نام کاربری)
+          <label class="portal-label block" for="member-code">
+            کد عضویت (نام کاربری)
           </label>
           <div class="relative">
             <input
+              id="member-code"
               v-model="memberCodeInput"
               type="text"
-              placeholder="کد عضویت خود را وارد نمایید"
+              placeholder="کد عضویت"
               dir="ltr"
               autocomplete="username"
               required
-              class="w-full h-12 px-4 pl-10 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-500/15 text-sm font-semibold text-slate-800 dark:text-slate-100 transition-all text-right tabular-nums font-mono"
+              class="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 pl-10 text-right text-sm tabular-nums text-slate-800 transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 font-mono"
             />
-            <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-              <UserCheck class="w-4 h-4" />
-            </div>
+            <Hash class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           </div>
         </div>
 
-        <!-- Field 2: National Code (Password) -->
         <div class="space-y-1.5">
-          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-            کد ملی ۱۰ رقمی (رمز عبور)
+          <label class="portal-label block" for="national-code">
+            کد ملی (رمز عبور)
           </label>
           <div class="relative">
             <input
+              id="national-code"
               v-model="nationalCodeInput"
               :type="showPassword ? 'text' : 'password'"
-              placeholder="کد ملی ۱۰ رقمی خود را وارد نمایید"
+              placeholder="کد ملی ۱۰ رقمی"
               dir="ltr"
               autocomplete="current-password"
               required
-              class="w-full h-12 px-4 pl-20 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-500/15 text-sm font-semibold text-slate-800 dark:text-slate-100 transition-all text-right tabular-nums font-mono"
+              class="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 pl-20 text-right text-sm tabular-nums text-slate-800 transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 font-mono"
             />
-            <div class="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            <div class="absolute left-2.5 top-1/2 flex -translate-y-1/2 items-center gap-1">
               <button
                 type="button"
-                class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition"
+                class="cursor-pointer p-1 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-300"
                 title="نمایش/عدم نمایش رمز"
                 @click="showPassword = !showPassword"
               >
-                <EyeOff v-if="showPassword" class="w-4 h-4" />
-                <Eye v-else class="w-4 h-4" />
+                <EyeOff v-if="showPassword" class="h-4 w-4" />
+                <Eye v-else class="h-4 w-4" />
               </button>
-              <Lock class="w-4 h-4 text-slate-400" />
+              <Lock class="h-4 w-4 text-slate-400" />
             </div>
           </div>
         </div>
 
-        <!-- Submit Button -->
-        <div class="pt-2">
-          <button
-            type="submit"
-            :disabled="memberAuthStore.isLoading"
-            class="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold text-sm shadow-md shadow-emerald-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span
-              v-if="memberAuthStore.isLoading"
-              class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
-            />
-            <span>{{ memberAuthStore.isLoading ? 'در حال بررسی مشخصات...' : 'ورود به پروفایل' }}</span>
-          </button>
-        </div>
+        <button
+          type="submit"
+          :disabled="memberAuthStore.isLoading"
+          class="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-brand-600 text-sm font-medium text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <span
+            v-if="memberAuthStore.isLoading"
+            class="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
+          />
+          <span>{{ memberAuthStore.isLoading ? 'در حال بررسی…' : 'ورود' }}</span>
+        </button>
       </form>
 
-      <!-- Bottom Navigations -->
-      <div class="mt-8 pt-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center text-xs">
+      <div class="mt-6 border-t border-slate-100 pt-4 dark:border-slate-800">
         <button
           type="button"
-          class="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 font-bold transition flex items-center gap-1.5 cursor-pointer py-1 px-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+          class="mx-auto flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-50 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           @click="goHome"
         >
-          <ArrowRight class="w-3.5 h-3.5" />
+          <ArrowRight class="h-3.5 w-3.5" />
           <span>بازگشت به صفحه اصلی</span>
         </button>
       </div>

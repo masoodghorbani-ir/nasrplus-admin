@@ -77,3 +77,68 @@ button:focus:not(:focus-visible) {
   outline: none;
 }
 
+/*
+  Member portal design language
+  — Flat surfaces, border-first hierarchy, brand accent only
+  — Radius: controls lg / panels xl
+  — Status colors are semantic only (not decorative)
+*/
+@layer components {
+  .portal-page {
+    @apply flex min-h-screen flex-col bg-slate-50 font-sans text-slate-800 dark:bg-slate-950 dark:text-slate-100;
+  }
+
+  .portal-shell {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+
+  .portal-panel {
+    @apply rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900;
+  }
+
+  .portal-section-title {
+    @apply text-sm font-semibold text-slate-900 dark:text-slate-100;
+  }
+
+  .portal-section-desc {
+    @apply mt-0.5 text-xs font-normal leading-relaxed text-slate-500 dark:text-slate-400;
+  }
+
+  .portal-muted {
+    @apply text-xs font-normal text-slate-500 dark:text-slate-400;
+  }
+
+  .portal-label {
+    @apply text-xs font-medium text-slate-500 dark:text-slate-400;
+  }
+
+  .portal-value {
+    @apply text-sm font-medium text-slate-900 dark:text-slate-100;
+  }
+
+  .portal-metric {
+    @apply text-2xl font-semibold tabular-nums tracking-tight text-slate-900 dark:text-slate-50;
+  }
+
+  .portal-field {
+    @apply space-y-1 border-b border-slate-100 py-3 last:border-b-0 dark:border-slate-800/80;
+  }
+
+  .portal-icon-box {
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300;
+  }
+
+  .portal-status {
+    @apply inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium;
+  }
+
+  /* Single indicator: border-b-2 only (no ::after) — sits on nav border via -mb-px */
+  .portal-nav-tab {
+    @apply inline-flex shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200;
+  }
+
+  .portal-nav-tab-active {
+    @apply border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300;
+  }
+}
+

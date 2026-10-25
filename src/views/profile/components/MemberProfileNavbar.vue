@@ -2,11 +2,7 @@
 import { useRouter } from 'vue-router';
 import { useMemberAuthStore, useThemeStore } from '@/stores';
 import { MemberAvatar, AppLogo } from '@/components/ui';
-import {
-  Sun,
-  Moon,
-  LogOut,
-} from 'lucide-vue-next';
+import { Sun, Moon, LogOut } from 'lucide-vue-next';
 import { toPersianDigits } from '@/utils/formatters';
 
 const router = useRouter();
@@ -25,39 +21,41 @@ function goToProfile() {
 
 <template>
   <header
-    class="w-full backdrop-blur-md bg-white/90 dark:bg-slate-900/90 border-b border-slate-200/80 dark:border-slate-800/80 sticky top-0 z-30 transition-colors"
+    class="sticky top-0 z-30 w-full border-b border-slate-200 bg-white/95 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/95"
   >
-    <div class="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
-      <!-- Right: Logo & Member Brand -->
+    <div class="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6">
       <button
         type="button"
-        class="flex items-center cursor-pointer group text-right focus:outline-none min-w-0"
+        class="min-w-0 cursor-pointer text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
         title="صفحه اصلی پروفایل عضو"
         @click="goToProfile"
       >
         <AppLogo size="md" />
       </button>
 
-      <!-- Left: Member Info & Actions -->
-      <div class="flex items-center gap-1.5 sm:gap-3 shrink-0">
-        <!-- Theme Switcher -->
+      <div class="flex shrink-0 items-center gap-1 sm:gap-2">
         <button
           type="button"
-          class="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700 shrink-0"
+          class="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
           :title="themeStore.isDark ? 'تغییر به حالت روشن' : 'تغییر به حالت تاریک'"
           @click="themeStore.toggleTheme"
         >
-          <Sun v-if="themeStore.isDark" class="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-          <Moon v-else class="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />
+          <Sun v-if="themeStore.isDark" class="h-4 w-4 text-amber-400" />
+          <Moon v-else class="h-4 w-4" />
         </button>
 
-        <div class="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block shrink-0" />
-
-        <!-- Member Quick Identity Pill -->
         <div
           v-if="memberAuthStore.member"
-          class="h-10 sm:h-11 flex items-center gap-2 sm:gap-2.5 px-2 sm:px-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 shrink-0"
+          class="hidden items-center gap-2 border-r border-slate-200 pr-2 dark:border-slate-700 sm:flex"
         >
+          <div class="text-right leading-tight">
+            <p class="max-w-[160px] truncate text-xs font-medium text-slate-800 dark:text-slate-100">
+              {{ memberAuthStore.memberFullName }}
+            </p>
+            <p class="mt-0.5 text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
+              کد {{ toPersianDigits(memberAuthStore.memberCode) }}
+            </p>
+          </div>
           <MemberAvatar
             :profile-image="memberAuthStore.member.profileImage"
             :full-name="memberAuthStore.memberFullName"
@@ -65,28 +63,15 @@ function goToProfile() {
             shape="circle"
             :timestamp="memberAuthStore.photoTimestamp"
           />
-
-          <div class="hidden sm:flex flex-col justify-center text-right leading-tight">
-            <span class="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate max-w-[150px]">
-              {{ memberAuthStore.memberFullName }}
-            </span>
-            <div class="flex items-center gap-1 text-3xs text-slate-500 dark:text-slate-400 mt-0.5">
-              <span>کد:</span>
-              <span class="font-medium tabular-nums text-slate-700 dark:text-slate-300">
-                {{ toPersianDigits(memberAuthStore.memberCode) }}
-              </span>
-            </div>
-          </div>
         </div>
 
-        <!-- Logout Button -->
         <button
           type="button"
-          class="h-10 px-2.5 sm:h-11 sm:px-3.5 rounded-2xl border border-rose-200/80 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+          class="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
           title="خروج از حساب عضویت"
           @click="handleLogout"
         >
-          <LogOut class="w-4 h-4" />
+          <LogOut class="h-4 w-4" />
           <span class="hidden md:inline">خروج</span>
         </button>
       </div>
