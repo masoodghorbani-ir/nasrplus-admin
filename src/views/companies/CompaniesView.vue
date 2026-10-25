@@ -540,7 +540,7 @@ onMounted(() => {
           <Input
             v-model="titleInput"
             label="نام ثبتی شرکت / موسسه"
-            placeholder="مثال: داده‌ورزان نصر افزار"
+            placeholder="نام ثبتی شرکت یا موسسه را وارد نمایید"
             :error="formErrors.title"
             required
           />
@@ -563,41 +563,41 @@ onMounted(() => {
           <Input
             v-model="nationalIdInput"
             label="شناسه ملی (۱۱ رقم)"
-            placeholder="10101234567"
+            placeholder="شناسه ملی ۱۱ رقمی را وارد نمایید"
             dir="ltr"
           />
 
           <Input
             v-model="regNumberInput"
             label="شماره ثبت"
-            placeholder="456789"
+            placeholder="شماره ثبت شرکت را وارد نمایید"
             dir="ltr"
           />
 
           <Input
             v-model="economicCodeInput"
             label="کد اقتصادی"
-            placeholder="411234567890"
+            placeholder="کد اقتصادی را وارد نمایید"
             dir="ltr"
           />
 
           <Input
             v-model="ceoNameInput"
             label="نام مدیرعامل"
-            placeholder="نام و نام خانوادگی مدیرعامل"
+            placeholder="نام و نام خانوادگی مدیرعامل را وارد نمایید"
           />
 
           <Input
             v-model="websiteInput"
             label="وب‌سایت رسمی"
-            placeholder="https://company.ir"
+            placeholder="آدرس وب‌سایت را وارد نمایید"
             dir="ltr"
           />
 
           <Input
             v-model="emailInput"
             label="پست الکترونیک (ایمیل)"
-            placeholder="info@company.ir"
+            placeholder="پست الکترونیکی را وارد نمایید"
             dir="ltr"
           />
         </div>

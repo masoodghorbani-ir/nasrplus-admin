@@ -10,6 +10,7 @@ import MemberPhotoTab from './components/MemberPhotoTab.vue';
 import MemberQualificationsTab from '@/views/members/components/MemberQualificationsTab.vue';
 import MemberSkillsTab from '@/views/members/components/MemberSkillsTab.vue';
 import MemberPhotoModal from '@/views/members/components/MemberPhotoModal.vue';
+import { AppLogo } from '@/components/ui';
 import {
   LayoutDashboard,
   User,
@@ -115,25 +116,8 @@ onMounted(async () => {
     >
       <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-4">
         <!-- Logo -->
-        <div class="flex items-center gap-3 cursor-pointer" @click="goHome">
-          <div
-            class="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-white dark:bg-slate-800 p-1.5 border border-slate-200/90 dark:border-slate-700 shadow-xs flex items-center justify-center shrink-0"
-          >
-            <img
-              src="/logo.png"
-              alt="لوگوی نظام صنفی رایانه‌ای"
-              class="h-full w-auto object-contain"
-            />
-          </div>
-
-          <div class="flex flex-col text-right">
-            <span class="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100">
-              نصر پلاس
-            </span>
-            <span class="text-xs text-slate-500 dark:text-slate-400 font-normal">
-              سامانه یکپارچه سازمان نظام صنفی رایانه‌ای
-            </span>
-          </div>
+        <div class="cursor-pointer group flex items-center" @click="goHome" title="رفتن به صفحه اصلی">
+          <AppLogo size="md" />
         </div>
 
         <!-- Actions -->

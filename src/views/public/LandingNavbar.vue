@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import { useThemeStore } from '@/stores';
+import { AppLogo } from '@/components/ui';
 import {
   Sun,
   Moon,
@@ -31,25 +32,8 @@ function goToHome() {
   >
     <div class="max-w-6xl mx-auto px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-2">
       <!-- Logo & Title -->
-      <div class="flex items-center gap-2.5 sm:gap-3 shrink-0 cursor-pointer" @click="goToHome">
-        <!-- Logo Emblem -->
-        <div class="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 p-1 sm:p-1.5 border border-slate-200/90 dark:border-slate-700 shadow-2xs flex items-center justify-center shrink-0">
-          <img
-            src="/logo.png"
-            alt="لوگوی سازمان نظام صنفی رایانه‌ای"
-            class="h-full w-auto object-contain"
-          />
-        </div>
-
-        <!-- Text -->
-        <div class="flex flex-col sm:flex-row sm:items-baseline sm:gap-1.5">
-          <span class="text-xs sm:text-base font-black text-slate-900 dark:text-white tracking-tight">
-            نصر پلاس
-          </span>
-          <span class="text-3xs sm:text-xs font-semibold text-slate-500 dark:text-slate-400">
-            (سامانه ثبت‌نام آنلاین اعضا)
-          </span>
-        </div>
+      <div class="flex items-center shrink-0 cursor-pointer group" @click="goToHome" title="رفتن به صفحه اصلی">
+        <AppLogo size="md" />
       </div>
 
       <!-- Left Quick Actions -->

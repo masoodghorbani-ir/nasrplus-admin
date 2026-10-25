@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useThemeStore } from '@/stores';
 import { Sun, Moon } from 'lucide-vue-next';
-import { ToastContainer } from '@/components/ui';
+import { ToastContainer, AppLogo } from '@/components/ui';
 
 const themeStore = useThemeStore();
 </script>
@@ -13,22 +13,8 @@ const themeStore = useThemeStore();
   >
     <!-- Top Bar with Theme Toggle -->
     <header class="w-full px-6 py-4 flex items-center justify-between z-10">
-      <router-link to="/" class="flex items-center gap-3 group" title="رفتن به درگاه اصلی">
-        <div class="h-10 w-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 flex items-center justify-center shadow-xs">
-          <img
-            src="/logo.png"
-            alt="لوگو نصر"
-            class="h-full w-auto object-contain"
-          />
-        </div>
-        <div class="flex flex-col">
-          <span class="text-sm font-black text-slate-900 dark:text-white tracking-tight">
-            نصر پلاس
-          </span>
-          <span class="text-3xs text-brand-700 dark:text-brand-400 font-bold">
-            سامانه مدیریت اعضا (نصر)
-          </span>
-        </div>
+      <router-link to="/" class="group flex items-center" title="رفتن به درگاه اصلی">
+        <AppLogo size="sm" />
       </router-link>
 
       <div class="flex items-center gap-3">

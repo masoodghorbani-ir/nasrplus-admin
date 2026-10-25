@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import { useMemberAuthStore, useThemeStore } from '@/stores';
-import MemberAvatar from '@/components/ui/MemberAvatar.vue';
+import { MemberAvatar, AppLogo } from '@/components/ui';
 import {
   Sun,
   Moon,
@@ -31,28 +31,11 @@ function goToProfile() {
       <!-- Right: Logo & Member Brand -->
       <button
         type="button"
-        class="flex items-center gap-2.5 sm:gap-3 cursor-pointer group text-right focus:outline-none min-w-0"
+        class="flex items-center cursor-pointer group text-right focus:outline-none min-w-0"
         title="صفحه اصلی پروفایل عضو"
         @click="goToProfile"
       >
-        <div
-          class="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-white dark:bg-slate-800 p-1.5 border border-slate-200/90 dark:border-slate-700 shadow-xs flex items-center justify-center shrink-0 group-hover:border-emerald-500/50 transition-colors"
-        >
-          <img
-            src="/logo.png"
-            alt="لوگوی نظام صنفی رایانه‌ای"
-            class="h-full w-auto object-contain"
-          />
-        </div>
-
-        <div class="flex flex-col text-right min-w-0">
-          <span class="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors truncate">
-            نصر پلاس
-          </span>
-          <span class="text-3xs sm:text-xs text-slate-500 dark:text-slate-400 font-normal truncate max-w-[130px] xs:max-w-[200px] sm:max-w-none">
-            سامانه یکپارچه سازمان نظام صنفی رایانه‌ای
-          </span>
-        </div>
+        <AppLogo size="md" />
       </button>
 
       <!-- Left: Member Info & Actions -->

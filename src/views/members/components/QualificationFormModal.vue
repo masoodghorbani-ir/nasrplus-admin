@@ -287,7 +287,7 @@ async function handleSubmit() {
           <Input
             v-model="formTitle"
             label="عنوان مدرک"
-            placeholder="مثال: کارشناسی مهندسی نرم‌افزار، کارشناسی ارشد هوش مصنوعی..."
+            placeholder="عنوان مدرک تحصیلی را وارد نمایید"
             :error="errors.title"
             required
           >
@@ -312,7 +312,7 @@ async function handleSubmit() {
           <Input
             v-model="formInstitution"
             label="دانشگاه / موسسه آموزش عالی"
-            placeholder="مثال: دانشگاه صنعتی شریف، دانشگاه تهران..."
+            placeholder="نام دانشگاه یا موسسه آموزشی را وارد نمایید"
             :error="errors.institution"
           >
             <template #prefix>
@@ -323,7 +323,7 @@ async function handleSubmit() {
           <Input
             v-model="formCity"
             label="شهر محل تحصیل"
-            placeholder="مثال: تهران، تبریز، اصفهان..."
+            placeholder="شهر محل تحصیل را وارد نمایید"
             :error="errors.city"
           >
             <template #prefix>
@@ -338,7 +338,7 @@ async function handleSubmit() {
             v-model="formStartYear"
             type="number"
             label="سال شروع تحصیل"
-            placeholder="مثال: ۱۳۹۵"
+            placeholder="سال شروع (۴ رقم)"
             dir="ltr"
             :error="errors.startYear"
           >
@@ -351,7 +351,7 @@ async function handleSubmit() {
             v-model="formGraduationYear"
             type="number"
             label="سال فراغت از تحصیل"
-            placeholder="مثال: ۱۳۹۹"
+            placeholder="سال فراغت (۴ رقم)"
             dir="ltr"
             :error="errors.graduationYear"
           >
@@ -367,7 +367,7 @@ async function handleSubmit() {
             min="0"
             max="20"
             label="معدل کل (از ۲۰)"
-            placeholder="مثال: ۱۷.۸۵"
+            placeholder="معدل کل را وارد نمایید"
             dir="ltr"
             :error="errors.gpa"
           >

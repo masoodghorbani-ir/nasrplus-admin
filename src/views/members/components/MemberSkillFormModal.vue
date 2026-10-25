@@ -372,7 +372,7 @@ async function handleSave() {
             </label>
             <Input
               v-model="formCertificateTitle"
-              placeholder="مانند: Cisco CCNA / LPIC-2 / گواهینامه سازمان فنی‌حرفه‌ای"
+              placeholder="عنوان یا مرجع صادرکننده گواهینامه را وارد نمایید"
               :error="errors.certificateTitle"
             />
           </div>

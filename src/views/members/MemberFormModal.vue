@@ -325,7 +325,7 @@ async function handleSubmit() {
           <Input
             v-model="memberCode"
             label="کد عضویت صنف"
-            placeholder="مثال: NSR-201045"
+            placeholder="کد عضویت را وارد نمایید"
             dir="ltr"
             :error="errors.memberCode"
             :disabled="isEdit"
@@ -344,7 +344,7 @@ async function handleSubmit() {
           <Input
             v-model="nationalCode"
             :label="isLegal ? 'شناسه / کد ملی' : 'کد ملی (۱۰ رقم)'"
-            placeholder="0012345678"
+            placeholder="کد ملی ۱۰ رقمی را وارد نمایید"
             dir="ltr"
             :error="errors.nationalCode"
           />
@@ -478,7 +478,7 @@ async function handleSubmit() {
           <Input
             v-model="initialPhoneNumber"
             label="شماره تلفن همراه"
-            placeholder="09121234567"
+            placeholder="شماره همراه را وارد نمایید"
             dir="ltr"
           />
 
@@ -509,7 +509,7 @@ async function handleSubmit() {
           <Input
             v-model="initialPostalCode"
             label="کد پستی (۱۰ رقم)"
-            placeholder="1417755331"
+            placeholder="کد پستی ۱۰ رقمی را وارد نمایید"
             dir="ltr"
             maxlength="10"
           />

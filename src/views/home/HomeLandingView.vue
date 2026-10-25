@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import { useThemeStore } from '@/stores';
+import { AppLogo } from '@/components/ui';
 import {
   ShieldCheck,
   UserCheck,
@@ -46,26 +47,7 @@ function goToProfile() {
     >
       <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-4">
         <!-- Brand Emblem & Title -->
-        <div class="flex items-center gap-3">
-          <div
-            class="h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-white dark:bg-slate-800 p-1.5 border border-slate-200/90 dark:border-slate-700 shadow-xs flex items-center justify-center shrink-0"
-          >
-            <img
-              src="/logo.png"
-              alt="لوگوی نظام صنفی رایانه‌ای"
-              class="h-full w-auto object-contain"
-            />
-          </div>
-
-          <div class="flex flex-col text-right">
-            <span class="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-              نصر پلاس
-            </span>
-            <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              سامانه یکپارچه سازمان نظام صنفی رایانه‌ای
-            </span>
-          </div>
-        </div>
+        <AppLogo size="md" />
 
         <!-- Right Side (in RTL): Theme Switcher -->
         <div class="flex items-center gap-2 sm:gap-3">

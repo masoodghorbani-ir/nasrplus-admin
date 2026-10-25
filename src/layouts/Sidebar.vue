@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore, useThemeStore, useLookupsStore } from '@/stores';
+import { AppLogo } from '@/components/ui';
 import {
   LayoutDashboard,
   Users,
@@ -12,7 +13,6 @@ import {
   ChevronRight,
   ChevronDown,
   X,
-  ExternalLink,
   GraduationCap,
   Award,
   ClipboardCheck,
@@ -236,27 +236,13 @@ function navigateToMembers(typeId?: string) {
       ]"
     >
       <div
-        class="flex items-center gap-3 cursor-pointer overflow-hidden"
+        class="flex items-center cursor-pointer overflow-hidden min-w-0"
         @click="navigateTo('/admin/dashboard')"
       >
-        <!-- Logo Emblem -->
-        <div class="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 p-1 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700 shadow-xs">
-          <img
-            src="/logo.png"
-            alt="لوگوی نصر"
-            class="h-full w-auto object-contain"
-          />
-        </div>
-
-        <!-- Brand Text -->
-        <div v-if="!themeStore.sidebarCollapsed" class="flex flex-col text-right truncate">
-          <span class="text-sm font-black text-slate-900 dark:text-white tracking-tight truncate">
-            نصر پلاس
-          </span>
-          <span class="text-[11px] text-brand-700 dark:text-brand-400 font-bold truncate">
-            سامانه مدیریت اعضا (نصر)
-          </span>
-        </div>
+        <AppLogo
+          size="sm"
+          :hide-text="themeStore.sidebarCollapsed"
+        />
       </div>
 
       <!-- Close Mobile Sidebar Button -->
@@ -513,21 +499,6 @@ function navigateToMembers(typeId?: string) {
           </button>
         </template>
       </nav>
-    </div>
-
-    <!-- Public Landing Quick Link -->
-    <div
-      v-if="!themeStore.sidebarCollapsed"
-      class="px-3 pt-2 shrink-0"
-    >
-      <a
-        href="/register"
-        target="_blank"
-        class="flex items-center justify-between p-2 rounded-xl bg-brand-50/70 hover:bg-brand-100/70 dark:bg-brand-950/40 dark:hover:bg-brand-900/50 border border-brand-200/60 dark:border-brand-800/40 text-brand-700 dark:text-brand-300 transition-colors text-xs font-bold"
-      >
-        <span>پورتال لندینگ ثبت‌نام</span>
-        <ExternalLink class="w-3.5 h-3.5" />
-      </a>
     </div>
 
     <!-- Sidebar Footer / Collapse Toggle on Desktop -->

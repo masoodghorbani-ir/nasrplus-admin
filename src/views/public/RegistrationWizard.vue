@@ -534,7 +534,7 @@ function resetForm() {
                 <input
                   v-model="form.companyName"
                   type="text"
-                  placeholder="مثال: شرکت پیشگامان داده و فناوری نوین"
+                  placeholder="نام ثبتی شرکت را وارد نمایید"
                   class="w-full h-11 sm:h-10 px-3.5 text-base sm:text-sm rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
                 />
                 <p v-if="errors.companyName" class="text-2xs text-rose-500 mt-1 font-bold">{{ errors.companyName }}</p>
@@ -547,7 +547,7 @@ function resetForm() {
                 <input
                   v-model="form.companyNationalId"
                   type="text"
-                  placeholder="10101234567"
+                  placeholder="شناسه ملی ۱۱ رقمی را وارد نمایید"
                   maxlength="11"
                   dir="ltr"
                   class="w-full h-11 sm:h-10 px-3.5 text-base sm:text-sm rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono"
@@ -580,7 +580,7 @@ function resetForm() {
               <input
                 v-model="form.firstName"
                 type="text"
-                placeholder="مثال: علی"
+                placeholder="نام را وارد نمایید"
                 class="w-full h-11 sm:h-10 px-3.5 text-base sm:text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
               />
               <p v-if="errors.firstName" class="text-2xs text-rose-500 mt-1 font-bold">{{ errors.firstName }}</p>
@@ -593,7 +593,7 @@ function resetForm() {
               <input
                 v-model="form.lastName"
                 type="text"
-                placeholder="مثال: حسینی"
+                placeholder="نام خانوادگی را وارد نمایید"
                 class="w-full h-11 sm:h-10 px-3.5 text-base sm:text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
               />
               <p v-if="errors.lastName" class="text-2xs text-rose-500 mt-1 font-bold">{{ errors.lastName }}</p>
@@ -606,7 +606,7 @@ function resetForm() {
               <input
                 v-model="form.nationalCode"
                 type="text"
-                placeholder="0012345678"
+                placeholder="کد ملی ۱۰ رقمی را وارد نمایید"
                 maxlength="10"
                 dir="ltr"
                 class="w-full h-11 sm:h-10 px-3.5 text-base sm:text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono"
@@ -672,7 +672,7 @@ function resetForm() {
               <input
                 v-model="form.mobilePhone"
                 type="text"
-                placeholder="09121234567"
+                placeholder="شماره همراه را وارد نمایید"
                 maxlength="11"
                 dir="ltr"
                 class="w-full h-11 sm:h-10 px-3.5 text-base sm:text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono"
@@ -687,7 +687,7 @@ function resetForm() {
               <input
                 v-model="form.email"
                 type="email"
-                placeholder="name@example.ir"
+                placeholder="پست الکترونیکی را وارد نمایید"
                 dir="ltr"
                 class="w-full h-11 sm:h-10 px-3.5 text-base sm:text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
               />
@@ -732,7 +732,7 @@ function resetForm() {
               <input
                 v-model="form.academicField"
                 type="text"
-                placeholder="مثلاً مهندسی نرم‌افزار، IT"
+                placeholder="رشته تحصیلی را وارد نمایید"
                 class="w-full h-11 sm:h-10 px-3.5 text-base sm:text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none"
               />
             </div>
@@ -772,7 +772,7 @@ function resetForm() {
               <input
                 v-model="form.postalCode"
                 type="text"
-                placeholder="1234567890"
+                placeholder="کد پستی ۱۰ رقمی را وارد نمایید"
                 maxlength="10"
                 dir="ltr"
                 class="w-full h-11 sm:h-10 px-3.5 text-base sm:text-sm rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono"

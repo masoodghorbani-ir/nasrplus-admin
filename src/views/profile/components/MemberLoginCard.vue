@@ -92,7 +92,7 @@ function goHome() {
             <input
               v-model="memberCodeInput"
               type="text"
-              placeholder="مثال: ۴۵۰۳۰۰۸۶"
+              placeholder="کد عضویت خود را وارد نمایید"
               dir="ltr"
               autocomplete="username"
               required
@@ -113,7 +113,7 @@ function goHome() {
             <input
               v-model="nationalCodeInput"
               :type="showPassword ? 'text' : 'password'"
-              placeholder="کد ملی ده رقمی بدون خط تیره"
+              placeholder="کد ملی ۱۰ رقمی خود را وارد نمایید"
               dir="ltr"
               autocomplete="current-password"
               required

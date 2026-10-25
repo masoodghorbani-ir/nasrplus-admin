@@ -90,8 +90,7 @@ async function handleLogin() {
         <Input
           v-model="username"
           label="نام کاربری یا ایمیل مدیر"
-          placeholder="مثال: superadmin@nasrplus.ir"
-          dir="ltr"
+          placeholder="نام کاربری یا ایمیل خود را وارد نمایید"
           :error="usernameError"
           required
         >
@@ -105,8 +104,7 @@ async function handleLogin() {
           v-model="password"
           label="رمز عبور"
           :type="showPassword ? 'text' : 'password'"
-          placeholder="••••••••"
-          dir="ltr"
+          placeholder="رمز عبور خود را وارد نمایید"
           :error="passwordError"
           required
         >

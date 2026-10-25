@@ -633,7 +633,7 @@ onMounted(() => {
           <Input
             v-model="newAdminFullName"
             label="نام و نام خانوادگی"
-            placeholder="مثال: رضا صادقی"
+            placeholder="نام و نام خانوادگی را وارد نمایید"
           />
 
           <Select
@@ -649,7 +649,7 @@ onMounted(() => {
           <Input
             v-model="newAdminUsername"
             label="نام کاربری / ایمیل"
-            placeholder="admin@nasrplus.ir"
+            placeholder="نام کاربری یا ایمیل را وارد نمایید"
             dir="ltr"
             required
           />
@@ -658,7 +658,7 @@ onMounted(() => {
             v-model="newAdminPassword"
             type="password"
             label="رمز عبور"
-            placeholder="••••••••"
+            placeholder="رمز عبور را وارد نمایید"
             dir="ltr"
             required
           />
@@ -738,7 +738,7 @@ onMounted(() => {
           <Input
             v-model="editAdminFullName"
             label="نام و نام خانوادگی"
-            placeholder="مثال: رضا صادقی"
+            placeholder="نام و نام خانوادگی را وارد نمایید"
           />
 
           <Select
@@ -754,7 +754,7 @@ onMounted(() => {
           <Input
             v-model="editAdminUsername"
             label="نام کاربری / ایمیل"
-            placeholder="admin@nasrplus.ir"
+            placeholder="نام کاربری یا ایمیل را وارد نمایید"
             dir="ltr"
             required
           />
@@ -865,14 +865,14 @@ onMounted(() => {
         <Input
           v-model="permName"
           label="عنوان فارسی مجوز"
-          placeholder="مثال: صدور کارت عضویت"
+          placeholder="عنوان فارسی مجوز را وارد نمایید"
           required
         />
 
         <Input
           v-model="permKey"
           label="کلید انگلیسی دسترسی (Key)"
-          placeholder="مثال: cards:issue"
+          placeholder="شناسه کلید دسترسی (انگلیسی)"
           dir="ltr"
           required
         />
@@ -880,14 +880,14 @@ onMounted(() => {
         <Input
           v-model="permModule"
           label="نام ماژول"
-          placeholder="مثال: cards"
+          placeholder="نام ماژول مربوطه"
           dir="ltr"
         />
 
         <Input
           v-model="permDesc"
           label="توضیحات دسترسی"
-          placeholder="مجوز صدور و چاپ کارت اعضای صنف"
+          placeholder="توضیحات دسترسی را وارد نمایید"
         />
       </form>
 

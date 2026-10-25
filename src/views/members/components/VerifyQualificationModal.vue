@@ -330,7 +330,7 @@ async function handleSubmitDecision() {
         <textarea
           v-model="rejectionReason"
           rows="3"
-          placeholder="علت رد شدن مدرک را با ذکر دقیق جزئیات بنویسید (مثال: تصویر گواهی موقت منقضی شده است، عدم تطابق شماره دانشنامه با سامانه وزارت علوم و...)"
+          placeholder="علت رد شدن مدرک را با ذکر دقیق جزئیات بنویسید..."
           :class="[
             'w-full px-3.5 py-2.5 rounded-xl border text-xs bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 transition',
             isRejectionReasonEmpty && touched

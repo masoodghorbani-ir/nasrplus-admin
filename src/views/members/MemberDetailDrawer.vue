@@ -1450,7 +1450,7 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
         <Input
           v-model="postalCodeInput"
           label="کد پستی (۱۰ رقم)"
-          placeholder="1417755331"
+          placeholder="کد پستی ۱۰ رقمی را وارد نمایید"
           dir="ltr"
           maxlength="10"
         />
@@ -1458,7 +1458,7 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
         <Input
           v-model="plaqueInput"
           label="پلاک"
-          placeholder="مثال: ۱۲"
+          placeholder="شماره پلاک را وارد نمایید"
           dir="ltr"
         />
       </div>
@@ -1519,7 +1519,7 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
           <Input
             v-model="phoneNumberInput"
             label="شماره تماس"
-            placeholder="09121234567"
+            placeholder="شماره تماس را وارد نمایید"
             dir="ltr"
             required
           />
@@ -1527,7 +1527,7 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
         <Input
           v-model="areaCodeInput"
           label="پیش‌شماره (شهر)"
-          placeholder="021"
+          placeholder="پیش‌شماره شهر را وارد نمایید"
           dir="ltr"
         />
       </div>
@@ -1536,13 +1536,13 @@ function copyToClipboard(text: string, msg = 'کپی شد') {
         <Input
           v-model="extensionInput"
           label="شماره داخلی"
-          placeholder="102"
+          placeholder="شماره داخلی را وارد نمایید"
           dir="ltr"
         />
         <Input
           v-model="phoneTitleInput"
           label="عنوان / توضیحات خط"
-          placeholder="مثال: خط مستقیم دفتر"
+          placeholder="عنوان یا توضیحات خط را وارد نمایید"
         />
       </div>
 

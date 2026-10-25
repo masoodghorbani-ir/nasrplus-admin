@@ -319,7 +319,7 @@ async function handleSubmitDecision() {
         <textarea
           v-model="rejectionReason"
           rows="3"
-          placeholder="علت رد را به صورت دقیق بنویسید (مثلاً: تصویر گواهینامه ناخوانا است یا نام دارنده مدرک با عضو مغایرت دارد)..."
+          placeholder="علت رد را به صورت دقیق بنویسید..."
           class="w-full px-3 py-2 text-xs rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50/20 dark:bg-rose-950/20 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition resize-none"
         ></textarea>
 

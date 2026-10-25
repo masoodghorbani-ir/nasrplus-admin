@@ -738,7 +738,7 @@ onMounted(() => {
         <Input
           v-model="formTitle"
           label="عنوان"
-          placeholder="عنوان نمایشی مورد نظر..."
+          placeholder="عنوان مورد نظر را وارد نمایید"
           required
         />
 
@@ -746,7 +746,7 @@ onMounted(() => {
           v-if="['membership-types', 'specializations', 'nature-of-memberships'].includes(selectedLookup || '')"
           v-model="formCode"
           label="کد انگلیسی شناسه (Code)"
-          placeholder="مثال: SOFTWARE"
+          placeholder="کد شناسه انگلیسی را وارد نمایید"
           dir="ltr"
         />
 
@@ -755,7 +755,7 @@ onMounted(() => {
           v-model="formLevel"
           type="number"
           label="سطح رتبه (Level)"
-          placeholder="مثال: 1, 2, 3"
+          placeholder="سطح رتبه عددی را وارد نمایید"
           dir="ltr"
         />
 
