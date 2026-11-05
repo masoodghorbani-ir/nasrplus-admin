@@ -254,14 +254,6 @@ function getSpecTitle(skill: IMemberSkill): string {
   const found = lookupsStore.specializations.find((s) => s._id === skill.specializationId);
   return found?.title || String(skill.specializationId || 'نامشخص');
 }
-
-function getSpecCode(skill: IMemberSkill): string {
-  if (typeof skill.specializationId === 'object' && skill.specializationId?.code) {
-    return skill.specializationId.code;
-  }
-  const found = lookupsStore.specializations.find((s) => s._id === skill.specializationId);
-  return found?.code || '';
-}
 </script>
 
 <template>
@@ -378,11 +370,8 @@ function getSpecCode(skill: IMemberSkill): string {
               <Award class="w-4 h-4" />
             </div>
             <div>
-              <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <span>{{ getSpecTitle(skill) }}</span>
-                <span v-if="getSpecCode(skill)" class="px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-mono text-slate-500 font-bold">
-                  {{ getSpecCode(skill) }}
-                </span>
+              <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100">
+                {{ getSpecTitle(skill) }}
               </h4>
               <p class="text-2xs text-slate-400 mt-0.5 flex items-center gap-2">
                 <span class="flex items-center gap-1">

@@ -23,6 +23,8 @@ import {
   ExternalLink,
   MessageSquare,
   Sparkles,
+  Clock,
+  Eye,
 } from 'lucide-vue-next';
 
 interface Props {
@@ -188,82 +190,156 @@ async function handleSubmitDecision() {
     <!-- Modal Content -->
     <div v-if="skill" class="space-y-5 text-right select-none" dir="rtl">
       <!-- 1. Skill & Certificate Summary Card -->
-      <div class="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3.5">
-        <div class="flex items-start justify-between gap-3">
-          <div class="space-y-1">
-            <span class="text-2xs font-bold text-brand-600 dark:text-brand-400">رسته تخصصی / نوع مهارت:</span>
-            <h4 class="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Award class="w-4 h-4 text-brand-500 shrink-0" />
-              <span>{{ specializationTitle }}</span>
-            </h4>
+      <div class="bg-gradient-to-b from-slate-50 to-slate-100/60 dark:from-slate-800/50 dark:to-slate-900/50 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 space-y-4 shadow-xs">
+        <!-- Header: Specialization Title & Self-Assessment Pill/Meter -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/70 dark:border-slate-700/60">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-11 h-11 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200/70 dark:border-purple-800/70 flex items-center justify-center shrink-0 shadow-2xs">
+              <Award class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div class="min-w-0">
+              <span class="text-2xs font-semibold text-slate-400 dark:text-slate-500 block">رسته تخصصی / نوع مهارت:</span>
+              <h4 class="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 truncate mt-0.5">
+                {{ specializationTitle }}
+              </h4>
+            </div>
           </div>
 
-          <!-- Self Assessment Level Pill -->
+          <!-- Self Assessment Level Pill & Progress bar -->
+          <div class="flex flex-col sm:items-end gap-1.5 shrink-0 self-start sm:self-center">
+            <div
+              :class="[
+                'px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 shadow-2xs',
+                selfAssessment.badgeClass
+              ]"
+            >
+              <Sparkles class="w-3.5 h-3.5 shrink-0" />
+              <span>{{ selfAssessment.label }}</span>
+              <span class="inline-block w-1 h-1 rounded-full bg-current opacity-40"></span>
+              <span class="tabular-nums font-black">{{ toPersianDigits(skill.selfAssessmentPercentage) }}٪</span>
+            </div>
+            <!-- Mini progress indicator -->
+            <div class="w-28 sm:w-32 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div
+                :class="['h-full rounded-full transition-all duration-300', selfAssessment.progressBarClass]"
+                :style="{ width: `${skill.selfAssessmentPercentage}%` }"
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 Structured Cards: Experience & Certificate Status -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Box 1: Experience & Start Date -->
+          <div class="bg-white dark:bg-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-800 p-3.5 flex flex-col justify-between gap-3 shadow-2xs">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
+                <div class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center shrink-0">
+                  <Calendar class="w-4 h-4" />
+                </div>
+                <span>شروع فعالیت و سابقه</span>
+              </div>
+              <span
+                v-if="experienceDuration"
+                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 border border-brand-200/70 dark:border-brand-800/60 shrink-0"
+              >
+                <Clock class="w-3 h-3 text-brand-500 shrink-0" />
+                <span>{{ experienceDuration }}</span>
+              </span>
+            </div>
+
+            <div class="pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+              <span class="text-slate-500 dark:text-slate-400 text-2xs">تاریخ آغاز:</span>
+              <span
+                dir="ltr"
+                class="font-mono font-bold text-xs text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700/60 tabular-nums whitespace-nowrap"
+              >
+                {{ skill.startDate ? formatPersianDate(skill.startDate) : '—' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Box 2: Certificate Status & Document Preview -->
           <div
             :class="[
-              'px-2.5 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 shrink-0',
-              selfAssessment.badgeClass
+              'rounded-xl border p-3.5 flex flex-col justify-between gap-3 shadow-2xs transition-colors',
+              skill.hasCertificate
+                ? 'bg-purple-50/30 dark:bg-purple-950/20 border-purple-200/80 dark:border-purple-800/60'
+                : 'bg-white dark:bg-slate-900/80 border-slate-200/80 dark:border-slate-800'
             ]"
           >
-            <Sparkles class="w-3.5 h-3.5" />
-            <span>{{ selfAssessment.label }}</span>
-            <span class="tabular-nums font-black">{{ toPersianDigits(skill.selfAssessmentPercentage) }}٪</span>
-          </div>
-        </div>
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-200">
+                <div
+                  :class="[
+                    'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                    skill.hasCertificate
+                      ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                  ]"
+                >
+                  <FileText class="w-4 h-4" />
+                </div>
+                <span>گواهینامه و مدرک</span>
+              </div>
 
-        <!-- Experience & Certificate Info Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
-          <!-- Start Date -->
-          <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-            <Calendar class="w-4 h-4 text-slate-400 shrink-0" />
-            <span>شروع فعالیت:</span>
-            <span class="font-bold text-slate-800 dark:text-slate-200 tabular-nums">
-              {{ skill.startDate ? formatPersianDate(skill.startDate) : '—' }}
-            </span>
-            <span v-if="experienceDuration" class="text-2xs text-brand-600 dark:text-brand-400 font-medium">
-              ({{ experienceDuration }})
-            </span>
-          </div>
+              <!-- Status Tag -->
+              <span
+                v-if="skill.hasCertificate"
+                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/70 dark:border-emerald-800/60 shrink-0"
+              >
+                <CheckCircle2 class="w-3 h-3 text-emerald-500" />
+                دارای مدرک
+              </span>
+              <span
+                v-else
+                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 shrink-0"
+              >
+                فاقد گواهینامه
+              </span>
+            </div>
 
-          <!-- Certificate Status -->
-          <div class="flex items-center gap-2">
-            <FileText class="w-4 h-4 text-slate-400 shrink-0" />
-            <span class="text-slate-600 dark:text-slate-400">گواهینامه معتبر:</span>
-            <span v-if="skill.hasCertificate" class="font-bold text-emerald-600 dark:text-emerald-400">
-              دارد ({{ skill.certificateTitle || 'مدرک رسمی' }})
-            </span>
-            <span v-else class="text-slate-500">
-              فاقد گواهینامه (صرفاً خوداظهاری)
-            </span>
-          </div>
-        </div>
+            <div class="pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+              <div class="min-w-0 flex items-center gap-1.5">
+                <span
+                  v-if="skill.hasCertificate"
+                  class="text-xs font-bold text-purple-900 dark:text-purple-200 truncate"
+                  :title="skill.certificateTitle"
+                >
+                  {{ skill.certificateTitle || 'مدرک رسمی ثبت‌شده' }}
+                </span>
+                <span v-else class="text-2xs text-slate-400">
+                  صرفاً بر اساس خوداظهاری
+                </span>
+              </div>
 
-        <!-- Certificate File Preview Trigger -->
-        <div
-          v-if="skill.certificateFile"
-          class="p-2.5 bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-800/60 rounded-xl flex items-center justify-between gap-3 text-xs"
-        >
-          <div class="flex items-center gap-2 truncate text-purple-700 dark:text-purple-300 font-bold">
-            <Award class="w-4 h-4 shrink-0 text-purple-600" />
-            <span class="truncate">{{ skill.certificateTitle || 'فایل ضمیمه گواهینامه معتبر' }}</span>
+              <!-- Document Preview Action -->
+              <Button
+                v-if="skill.certificateFile"
+                type="button"
+                variant="outline"
+                size="xs"
+                class="h-7 px-2.5 text-2xs font-bold shrink-0 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/80 bg-white dark:bg-slate-900 hover:bg-purple-50 dark:hover:bg-purple-950/50 shadow-2xs"
+                @click="isPreviewModalOpen = true"
+              >
+                <Eye class="w-3.5 h-3.5 ml-1 text-purple-600 dark:text-purple-400" />
+                مشاهده سند مدرک
+                <ExternalLink class="w-2.5 h-2.5 mr-1 opacity-60" />
+              </Button>
+            </div>
           </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            class="text-xs shrink-0"
-            @click="isPreviewModalOpen = true"
-          >
-            <ExternalLink class="w-3.5 h-3.5 ml-1" />
-            مشاهده سند مدرک
-          </Button>
         </div>
 
         <!-- Member Notes / Description if present -->
-        <div v-if="skill.description" class="pt-2 text-2xs text-slate-600 dark:text-slate-400">
-          <span class="font-bold text-slate-700 dark:text-slate-300">توضیحات عضو:</span>
-          <p class="mt-0.5 leading-relaxed bg-white/70 dark:bg-slate-900/40 p-2 rounded-lg border border-slate-200/50 dark:border-slate-800">
+        <div
+          v-if="skill.description"
+          class="bg-white/90 dark:bg-slate-900/60 rounded-xl p-3 border border-slate-200/70 dark:border-slate-800 text-xs space-y-1"
+        >
+          <div class="flex items-center gap-1.5 text-2xs font-bold text-slate-600 dark:text-slate-300">
+            <MessageSquare class="w-3.5 h-3.5 text-slate-400" />
+            <span>توضیحات و اظهارات عضو:</span>
+          </div>
+          <p class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed pr-5 font-normal">
             {{ skill.description }}
           </p>
         </div>

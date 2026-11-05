@@ -267,14 +267,6 @@ function resolveSpecializationTitle(skill: IMemberSkill): string {
   return found?.title || String(skill.specializationId || 'نامشخص');
 }
 
-function resolveSpecializationCode(skill: IMemberSkill): string {
-  if (typeof skill.specializationId === 'object' && skill.specializationId?.code) {
-    return skill.specializationId.code;
-  }
-  const found = lookupsStore.specializations.find((s) => s._id === skill.specializationId);
-  return found?.code || '';
-}
-
 function openMemberProfile(memberId?: string) {
   if (!memberId) return;
   selectedMemberIdForDrawer.value = memberId;
@@ -358,7 +350,15 @@ function resetFilters() {
     <!-- Stat Cards Overview -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
       <!-- 1. Total Skills -->
-      <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1">
+      <div
+        :class="[
+          'p-4 rounded-2xl border shadow-2xs space-y-2 cursor-pointer transition',
+          selectedStatus === '' && !selectedHasCertificate
+            ? 'bg-purple-50/70 border-purple-300 dark:bg-purple-950/40 dark:border-purple-700 ring-2 ring-purple-400/30'
+            : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:bg-slate-50/60'
+        ]"
+        @click="selectedStatus = ''; selectedHasCertificate = ''"
+      >
         <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-bold">
           <span>کل مهارت‌های ثبت‌شده</span>
           <Award class="w-4 h-4 text-purple-500" />
@@ -366,13 +366,12 @@ function resetFilters() {
         <div class="text-2xl font-black text-slate-800 dark:text-slate-100 tabular-nums">
           {{ toPersianDigits(stats.total) }}
         </div>
-        <div class="text-2xs text-slate-400">تمام مهارت‌های پرونده‌ها</div>
       </div>
 
       <!-- 2. Pending (Highlighted) -->
       <div
         :class="[
-          'p-4 rounded-2xl border shadow-2xs space-y-1 cursor-pointer transition',
+          'p-4 rounded-2xl border shadow-2xs space-y-2 cursor-pointer transition',
           selectedStatus === 'PENDING'
             ? 'bg-amber-50/90 border-amber-300 dark:bg-amber-950/40 dark:border-amber-700 ring-2 ring-amber-400/30'
             : 'bg-white dark:bg-slate-900 border-amber-200/80 dark:border-amber-900/60 hover:bg-amber-50/40'
@@ -386,13 +385,12 @@ function resetFilters() {
         <div class="text-2xl font-black text-amber-600 dark:text-amber-400 tabular-nums">
           {{ toPersianDigits(stats.pending) }}
         </div>
-        <div class="text-2xs text-amber-600/80 dark:text-amber-400/80 font-bold">نیازمند بررسی فوری</div>
       </div>
 
       <!-- 3. Approved -->
       <div
         :class="[
-          'p-4 rounded-2xl border shadow-2xs space-y-1 cursor-pointer transition',
+          'p-4 rounded-2xl border shadow-2xs space-y-2 cursor-pointer transition',
           selectedStatus === 'APPROVED'
             ? 'bg-emerald-50/90 border-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-700 ring-2 ring-emerald-400/30'
             : 'bg-white dark:bg-slate-900 border-emerald-200/80 dark:border-emerald-900/60 hover:bg-emerald-50/40'
@@ -406,13 +404,12 @@ function resetFilters() {
         <div class="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
           {{ toPersianDigits(stats.approved) }}
         </div>
-        <div class="text-2xs text-emerald-600/80 dark:text-emerald-400/80">مورد تائید صنف</div>
       </div>
 
       <!-- 4. Rejected -->
       <div
         :class="[
-          'p-4 rounded-2xl border shadow-2xs space-y-1 cursor-pointer transition',
+          'p-4 rounded-2xl border shadow-2xs space-y-2 cursor-pointer transition',
           selectedStatus === 'REJECTED'
             ? 'bg-rose-50/90 border-rose-300 dark:bg-rose-950/40 dark:border-rose-700 ring-2 ring-rose-400/30'
             : 'bg-white dark:bg-slate-900 border-rose-200/80 dark:border-rose-900/60 hover:bg-rose-50/40'
@@ -426,11 +423,18 @@ function resetFilters() {
         <div class="text-2xl font-black text-rose-600 dark:text-rose-400 tabular-nums">
           {{ toPersianDigits(stats.rejected) }}
         </div>
-        <div class="text-2xs text-rose-600/80 dark:text-rose-400/80">همراه با علت رد</div>
       </div>
 
       <!-- 5. With Certificate -->
-      <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-purple-200/80 dark:border-purple-900/60 shadow-2xs space-y-1 col-span-2 sm:col-span-1">
+      <div
+        :class="[
+          'p-4 rounded-2xl border shadow-2xs space-y-2 col-span-2 sm:col-span-1 cursor-pointer transition',
+          selectedHasCertificate === 'true'
+            ? 'bg-purple-50/90 border-purple-300 dark:bg-purple-950/40 dark:border-purple-700 ring-2 ring-purple-400/30'
+            : 'bg-white dark:bg-slate-900 border-purple-200/80 dark:border-purple-900/60 hover:bg-purple-50/40'
+        ]"
+        @click="selectedHasCertificate = selectedHasCertificate === 'true' ? '' : 'true'"
+      >
         <div class="flex items-center justify-between text-purple-700 dark:text-purple-300 text-xs font-bold">
           <span>دارای گواهینامه معتبر</span>
           <FileText class="w-4 h-4 text-purple-500" />
@@ -438,7 +442,6 @@ function resetFilters() {
         <div class="text-2xl font-black text-purple-600 dark:text-purple-400 tabular-nums">
           {{ toPersianDigits(stats.withCertificate) }}
         </div>
-        <div class="text-2xs text-purple-600/80 dark:text-purple-400/80">دارای سند و فایل اسکن</div>
       </div>
     </div>
 
@@ -580,12 +583,9 @@ function resetFilters() {
               <!-- 2. Specialization & Activity Duration -->
               <td class="py-3.5 px-4">
                 <div class="space-y-1">
-                  <div class="flex items-center gap-1.5 flex-wrap">
+                  <div class="flex items-center gap-1.5">
                     <span class="font-bold text-slate-800 dark:text-slate-200">
                       {{ resolveSpecializationTitle(skill) }}
-                    </span>
-                    <span v-if="resolveSpecializationCode(skill)" class="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-mono text-slate-500 font-bold">
-                      {{ resolveSpecializationCode(skill) }}
                     </span>
                   </div>
 
