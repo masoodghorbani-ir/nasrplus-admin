@@ -96,6 +96,16 @@ const isIndividual = computed(() => {
   return !isLegal.value;
 });
 
+const specializationOptions = computed(() => [
+  { label: '- انتخاب نشده -', value: '' },
+  ...lookupsStore.specializations.map((s) => ({ label: s.title, value: s._id })),
+]);
+
+const rankOptions = computed(() => [
+  { label: '- انتخاب نشده -', value: '' },
+  ...lookupsStore.ranks.map((r) => ({ label: r.title, value: r._id })),
+]);
+
 async function fetchCompanies() {
   try {
     const res = await companiesApi.getCompanies({ limit: 100 });
@@ -126,7 +136,10 @@ watch(
         birthDate.value = props.member.birthDate ? props.member.birthDate.split('T')[0] : '';
         status.value = props.member.status || 'ACTIVE';
         membershipTypeId.value = typeof props.member.membershipTypeId === 'object' ? props.member.membershipTypeId._id : props.member.membershipTypeId;
-        specializationId.value = typeof props.member.specializationId === 'object' ? props.member.specializationId._id : props.member.specializationId;
+        const rawSpec = props.member.specializationId;
+        specializationId.value = rawSpec
+          ? (typeof rawSpec === 'object' ? rawSpec._id || '' : rawSpec)
+          : '';
         rankId.value = props.member.rankId ? (typeof props.member.rankId === 'object' ? props.member.rankId._id : props.member.rankId) : '';
         natureOfMembership.value = props.member.natureOfMembership ? (typeof props.member.natureOfMembership === 'object' ? props.member.natureOfMembership._id : props.member.natureOfMembership) : '';
         companyInformation.value = props.member.companyInformation ? (typeof props.member.companyInformation === 'object' ? props.member.companyInformation._id : props.member.companyInformation) : '';
@@ -182,7 +195,7 @@ function validate(): boolean {
   if (!membershipTypeId.value) {
     errors.value.membershipTypeId = 'انتخاب نوع عضویت الزامی است';
   }
-  if (!specializationId.value) {
+  if (!isEdit.value && !specializationId.value) {
     errors.value.specializationId = 'انتخاب رسته تخصصی الزامی است';
   }
 
@@ -421,17 +434,17 @@ async function handleSubmit() {
           <Select
             v-model="specializationId"
             label="رسته تخصصی فاوا"
-            placeholder="انتخاب رسته تخصصی..."
-            :options="lookupsStore.specializations.map(s => ({ label: s.title, value: s._id }))"
+            placeholder="- انتخاب نشده -"
+            :options="specializationOptions"
             :error="errors.specializationId"
-            required
+            :required="!isEdit"
           />
 
           <Select
             v-model="rankId"
             label="رتبه / گرید صنفی"
-            placeholder="انتخاب رتبه..."
-            :options="lookupsStore.ranks.map(r => ({ label: r.title, value: r._id }))"
+            placeholder="- انتخاب نشده -"
+            :options="rankOptions"
           />
 
           <Select

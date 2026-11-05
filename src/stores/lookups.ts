@@ -134,10 +134,10 @@ export const useLookupsStore = defineStore('lookups', () => {
   }
 
   function getSpecializationTitle(idOrObj: string | Specialization | undefined | null): string {
-    if (!idOrObj) return '—';
+    if (!idOrObj) return '- انتخاب نشده -';
     if (typeof idOrObj === 'object' && idOrObj.title) return idOrObj.title;
     const item = specializations.value.find((x) => x._id === idOrObj);
-    return item?.title || '—';
+    return item?.title || '- انتخاب نشده -';
   }
 
   function getRankTitle(idOrObj: string | Rank | undefined | null): string {
