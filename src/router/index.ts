@@ -173,6 +173,17 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'lookups/:tab',
+        name: 'LookupTab',
+        component: () => import('@/views/lookups/LookupsView.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresSuperAdmin: true,
+          title: 'اطلاعات پایه و دسته‌بندی‌ها',
+          permission: 'lookups:read',
+        },
+      },
+      {
         path: 'admins',
         name: 'Admins',
         component: () => import('@/views/admins/AdminsView.vue'),
@@ -222,6 +233,18 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/lookups',
     redirect: '/admin/lookups',
+  },
+  {
+    path: '/lookups/:tab',
+    redirect: (to) => `/admin/lookups/${to.params.tab}`,
+  },
+  {
+    path: '/admin/specializations',
+    redirect: '/admin/lookups?tab=specializations',
+  },
+  {
+    path: '/specializations',
+    redirect: '/admin/lookups?tab=specializations',
   },
   {
     path: '/admins',

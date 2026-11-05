@@ -1,9 +1,8 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+import { getApiBaseUrl } from '@/config';
 
 export const apiClient: AxiosInstance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: getApiBaseUrl(),
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
@@ -39,6 +38,8 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
+      const requestUrl = String(error.config?.url || '');
+      const isPasswordChange = requestUrl.includes('change-password');
       // Avoid looping if we are already attempting to login or on public landing/register pages
       const currentPath = window.location.pathname;
       const isPublicRoute =
@@ -51,7 +52,7 @@ apiClient.interceptors.response.use(
         currentPath.startsWith('/portal') ||
         currentPath.startsWith('/join');
 
-      if (!isPublicRoute) {
+      if (!isPublicRoute && !isPasswordChange) {
         localStorage.removeItem('nasrplus_token');
         localStorage.removeItem('nasrplus_user');
         window.location.href = `/admin/login?redirect=${encodeURIComponent(currentPath)}`;

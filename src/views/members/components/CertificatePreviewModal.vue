@@ -21,6 +21,7 @@ import {
   isImageDocument,
   resolveCertificateUrl,
 } from '@/utils/skills';
+import { getServerUrl } from '@/config';
 
 interface Props {
   open: boolean;
@@ -223,11 +224,12 @@ function handleImageError() {
   // If absolute backend URL failed, fallback to relative proxy path or vice-versa
   if (!didFallbackImage) {
     didFallbackImage = true;
-    if (displayUrl.value.includes(':5000/')) {
-      displayUrl.value = displayUrl.value.replace(/^https?:\/\/[^/]+:5000/, '');
+    const serverOrigin = getServerUrl();
+    if (displayUrl.value.startsWith(serverOrigin)) {
+      displayUrl.value = displayUrl.value.slice(serverOrigin.length) || '/';
       return;
     } else if (displayUrl.value.startsWith('/uploads/')) {
-      displayUrl.value = `http://localhost:5000${displayUrl.value}`;
+      displayUrl.value = `${serverOrigin}${displayUrl.value}`;
       return;
     }
   }

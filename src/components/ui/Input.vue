@@ -13,6 +13,7 @@ interface Props {
   required?: boolean;
   readonly?: boolean;
   dir?: 'rtl' | 'ltr' | 'auto';
+  autocomplete?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -66,6 +67,7 @@ function handleInput(event: Event) {
         :required="required"
         :readonly="readonly"
         :dir="dir"
+        :autocomplete="autocomplete"
         :class="[
           'w-full h-10 px-3.5 text-sm rounded-lg transition-all duration-150',
           'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500',

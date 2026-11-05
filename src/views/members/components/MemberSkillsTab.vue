@@ -11,7 +11,7 @@ import {
   ConfirmDialog,
   EmptyState,
 } from '@/components/ui';
-import { toPersianDigits, formatPersianDate } from '@/utils/formatters';
+import { toPersianDigits, formatPersianDate, formatWorkflowLogComment } from '@/utils/formatters';
 import { extractErrorMessage } from '@/utils/errors';
 import {
   getSelfAssessmentInfo,
@@ -443,7 +443,7 @@ function getSpecCode(skill: IMemberSkill): string {
             <span>علت رد مهارت توسط کارشناس صنف:</span>
           </div>
           <p class="text-rose-600 dark:text-rose-400 leading-relaxed text-2xs pr-5">
-            {{ skill.rejectionReason }}
+            {{ formatWorkflowLogComment(skill.rejectionReason) }}
           </p>
         </div>
 

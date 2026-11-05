@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { membersApi, companiesApi } from '@/api';
-import { useLookupsStore, useNotificationStore } from '@/stores';
+import { useLookupsStore, useNotificationStore, useDeskStore } from '@/stores';
 import type {
   IMemberSkill,
   Member,
@@ -15,7 +15,7 @@ import {
   MemberAvatar,
   Pagination,
 } from '@/components/ui';
-import { toPersianDigits, formatPersianDate } from '@/utils/formatters';
+import { toPersianDigits, formatPersianDate, formatWorkflowLogComment } from '@/utils/formatters';
 import { extractErrorMessage } from '@/utils/errors';
 import {
   getSelfAssessmentInfo,
@@ -44,6 +44,7 @@ import {
 
 const lookupsStore = useLookupsStore();
 const notificationStore = useNotificationStore();
+const deskStore = useDeskStore();
 
 const skillsList = ref<IMemberSkill[]>([]);
 const isLoading = ref(false);
@@ -221,6 +222,14 @@ const stats = computed(() => {
 
   return { total, pending, approved, rejected, withCertificate };
 });
+
+watch(
+  () => stats.value.pending,
+  (val) => {
+    deskStore.setPendingSkillsCount(val);
+  },
+  { immediate: true }
+);
 
 function resolveMember(skill: IMemberSkill): Member | null {
   if (skill.memberId && typeof skill.memberId === 'object') {
@@ -658,10 +667,10 @@ function resetFilters() {
                   <p
                     v-if="skill.verificationStatus === 'REJECTED' && skill.rejectionReason"
                     class="text-2xs text-rose-600 dark:text-rose-400 line-clamp-1 max-w-[180px] cursor-pointer hover:underline"
-                    :title="skill.rejectionReason"
+                    :title="formatWorkflowLogComment(skill.rejectionReason)"
                     @click="openVerifyModal(skill)"
                   >
-                    علت: {{ skill.rejectionReason }}
+                    علت: {{ formatWorkflowLogComment(skill.rejectionReason) }}
                   </p>
                 </div>
               </td>

@@ -21,6 +21,7 @@ import {
   GraduationCap,
   Camera,
   Award,
+  KeyRound,
 } from 'lucide-vue-next';
 import {
   Button,
@@ -48,6 +49,7 @@ import MemberContactsModal from './MemberContactsModal.vue';
 import MemberQualificationsModal from './MemberQualificationsModal.vue';
 import MemberSkillsModal from './MemberSkillsModal.vue';
 import MemberPhotoModal from './components/MemberPhotoModal.vue';
+import MemberPasswordModal from './components/MemberPasswordModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -77,6 +79,9 @@ function resolveMembershipTypeId(raw: string): string {
 const initialQueryTypeId = (route.query.membershipTypeId || route.query.type)
   ? String(route.query.membershipTypeId || route.query.type)
   : '';
+const initialQuerySpecializationId = route.query.specializationId
+  ? String(route.query.specializationId)
+  : '';
 
 // Query & Filter states
 const page = ref(1);
@@ -85,7 +90,7 @@ const search = ref('');
 const selectedStatus = ref<MemberStatus | ''>('');
 const selectedMembershipTypeId = ref(initialQueryTypeId);
 const selectedNatureOfMembership = ref('');
-const selectedSpecializationId = ref('');
+const selectedSpecializationId = ref(initialQuerySpecializationId);
 const selectedRankId = ref('');
 const dateFrom = ref('');
 const dateTo = ref('');
@@ -133,6 +138,14 @@ const photoTimestamp = ref(Date.now());
 function openPhotoModalForMember(member: Member) {
   managingPhotoMember.value = member;
   isPhotoModalOpen.value = true;
+}
+
+const isPasswordModalOpen = ref(false);
+const managingPasswordMember = ref<Member | null>(null);
+
+function openPasswordModal(member: Member) {
+  managingPasswordMember.value = member;
+  isPasswordModalOpen.value = true;
 }
 
 function handlePhotoUpdated(updatedPhotoPath: string) {
@@ -356,6 +369,29 @@ watch(selectedMembershipTypeId, (newVal) => {
     } else {
       delete nextQuery.membershipTypeId;
       delete nextQuery.type;
+    }
+    router.replace({ query: nextQuery });
+  }
+});
+
+watch(
+  () => route.query.specializationId,
+  (newSpecId) => {
+    const raw = newSpecId ? String(newSpecId) : '';
+    if (selectedSpecializationId.value !== raw) {
+      selectedSpecializationId.value = raw;
+    }
+  }
+);
+
+watch(selectedSpecializationId, (newVal) => {
+  const currentQueryVal = route.query.specializationId ? String(route.query.specializationId) : '';
+  if (newVal !== currentQueryVal) {
+    const nextQuery = { ...route.query };
+    if (newVal) {
+      nextQuery.specializationId = newVal;
+    } else {
+      delete nextQuery.specializationId;
     }
     router.replace({ query: nextQuery });
   }
@@ -759,6 +795,11 @@ onMounted(async () => {
                       onClick: () => openContactsModal(member, 'telephones'),
                     },
                     {
+                      label: 'تغییر رمز عبور',
+                      icon: KeyRound,
+                      onClick: () => openPasswordModal(member),
+                    },
+                    {
                       label: 'حذف پرونده',
                       icon: Trash2,
                       danger: true,
@@ -837,6 +878,11 @@ onMounted(async () => {
       :loading="isDeleting"
       @confirm="handleDeleteMember"
       @cancel="memberToDelete = null"
+    />
+
+    <MemberPasswordModal
+      v-model:open="isPasswordModalOpen"
+      :member="managingPasswordMember"
     />
 
     <!-- Member Photo Manager Modal -->

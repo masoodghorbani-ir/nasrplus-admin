@@ -3,6 +3,7 @@ import type {
   SkillVerificationStatus,
   ISkillVerificationLog,
 } from '@/types';
+import { getServerUrl } from '@/config';
 import { toPersianDigits } from './formatters';
 
 const STORAGE_PREFIX = 'nasrplus_member_skills_';
@@ -282,14 +283,7 @@ export function resolveCertificateUrl(path?: string | null): string {
     return trimmed;
   }
 
-  const baseUrl =
-    import.meta.env.VITE_SERVER_URL ||
-    (import.meta.env.VITE_API_BASE_URL
-      ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1\/?$/, '')
-      : '') ||
-    'http://localhost:5000';
-
-  const cleanBase = baseUrl.replace(/\/$/, '');
+  const cleanBase = getServerUrl();
   const cleanPath = trimmed.replace(/^\//, '');
   return `${cleanBase}/${cleanPath}`;
 }

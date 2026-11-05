@@ -206,3 +206,83 @@ export const phoneTypeConfig: Record<PhoneType, string> = {
   SUPPORT: 'خط پشتیبانی',
   OTHER: 'سایر',
 };
+
+/**
+ * Translate workflow / verification log comments and system reasons to Persian
+ */
+export function formatWorkflowLogComment(comment?: string | null): string {
+  if (!comment) return '';
+  const trimmed = comment.trim();
+  if (!trimmed) return '';
+
+  const exactMap: Record<string, string> = {
+    'Initial registration - Pending expert verification': 'ثبت اولیه مدرک - در انتظار تایید کارشناس',
+    'Initial registration - Approved': 'ثبت اولیه مدرک - تایید شده',
+    'Initial registration - Rejected': 'ثبت اولیه مدرک - رد شده',
+    'Initial submission - Pending expert verification': 'ثبت اولیه مدرک - در انتظار تایید کارشناس',
+    'Initial submission - Approved': 'ثبت اولیه مدرک - تایید شده',
+    'Initial submission - Rejected': 'ثبت اولیه مدرک - رد شده',
+    'Certificate uploaded - Pending expert verification': 'بارگذاری تصویر گواهینامه - در انتظار تایید کارشناس',
+    'Qualification approved': 'تایید مدرک تحصیلی',
+    'Qualification rejected': 'رد مدرک تحصیلی',
+    'Skill verification approved': 'تایید مهارت و گواهینامه',
+    'Skill verification rejected': 'رد مهارت و گواهینامه',
+    'Status reverted to pending': 'بازنشانی وضعیت به در انتظار بررسی مجدد',
+    'Status changed to APPROVED': 'تغییر وضعیت به تایید شده',
+    'Status changed to REJECTED': 'تغییر وضعیت به رد شده',
+    'Status changed to PENDING': 'تغییر وضعیت به در انتظار بررسی کارشناس',
+    'Pending expert verification': 'در انتظار تایید کارشناس',
+    'Approved': 'تایید شده',
+    'Rejected': 'رد شده',
+    'Pending': 'در انتظار بررسی',
+  };
+
+  if (exactMap[trimmed]) {
+    return exactMap[trimmed];
+  }
+
+  // Dynamic regex matches
+  const statusMatch = trimmed.match(/^Status changed to\s+(APPROVED|REJECTED|PENDING)$/i);
+  if (statusMatch) {
+    const s = statusMatch[1].toUpperCase();
+    if (s === 'APPROVED') return 'تغییر وضعیت به تایید شده';
+    if (s === 'REJECTED') return 'تغییر وضعیت به رد شده';
+    return 'تغییر وضعیت به در انتظار بررسی کارشناس';
+  }
+
+  const initialMatch = trimmed.match(/^Initial (registration|submission)(?:\s*-\s*(.+))?$/i);
+  if (initialMatch) {
+    const detail = (initialMatch[2] || '').trim().toLowerCase();
+    if (detail.includes('approved')) return 'ثبت اولیه مدرک - تایید شده';
+    if (detail.includes('reject')) return 'ثبت اولیه مدرک - رد شده';
+    return 'ثبت اولیه مدرک - در انتظار تایید کارشناس';
+  }
+
+  if (/^Certificate uploaded/i.test(trimmed)) {
+    return 'بارگذاری تصویر گواهینامه - در انتظار تایید کارشناس';
+  }
+
+  return trimmed;
+}
+
+/**
+ * Standardize operator display name in workflow logs
+ */
+export function formatWorkflowOperatorName(changedBy: any): string {
+  if (!changedBy) return 'سیستم / ثبت خودکار';
+  if (typeof changedBy === 'object') {
+    return changedBy.fullName || changedBy.username || 'کارشناس صنف';
+  }
+  const str = String(changedBy).trim();
+  if (!str || str.toLowerCase() === 'system' || str.toLowerCase() === 'null') {
+    return 'سیستم / ثبت خودکار';
+  }
+  if (str.toLowerCase() === 'admin') {
+    return 'مدیر سیستم';
+  }
+  if (/^[0-9a-fA-F]{24}$/.test(str)) {
+    return 'کارشناس صنف';
+  }
+  return str;
+}
+

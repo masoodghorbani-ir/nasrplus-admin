@@ -18,6 +18,7 @@ import {
   Skeleton,
 } from '@/components/ui';
 import { formatPersianDate, toPersianDigits } from '@/utils/formatters';
+import { getApiBaseUrl } from '@/config';
 
 const notificationStore = useNotificationStore();
 
@@ -26,7 +27,7 @@ const isLoading = ref(false);
 const latencyMs = ref<number | null>(null);
 const lastCheckedAt = ref<Date | null>(null);
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+const apiBaseUrl = getApiBaseUrl();
 
 async function checkHealth() {
   isLoading.value = true;
@@ -108,8 +109,8 @@ onMounted(() => {
         <h3 class="text-xl font-black text-slate-900 dark:text-slate-100 tabular-nums">
           {{ latencyMs !== null ? `${toPersianDigits(latencyMs)} ms` : '—' }}
         </h3>
-        <p class="text-[11px] text-slate-400 mt-2">
-          پاسخ مستقیم از localhost:5000
+        <p class="text-[11px] text-slate-400 mt-2 truncate" :title="apiBaseUrl">
+          پاسخ مستقیم از API
         </p>
       </div>
 

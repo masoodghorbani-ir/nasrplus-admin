@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { lookupsApi, membersApi, companiesApi } from '@/api';
-import { useLookupsStore, useNotificationStore } from '@/stores';
+import { useLookupsStore, useNotificationStore, useDeskStore } from '@/stores';
 import type {
   IAcademicQualification,
   QualificationVerificationStatus,
@@ -15,11 +15,14 @@ import {
   Badge,
   EmptyState,
   MemberAvatar,
+  TableActions,
+  type ActionItem,
 } from '@/components/ui';
-import { toPersianDigits } from '@/utils/formatters';
+import { toPersianDigits, formatWorkflowLogComment } from '@/utils/formatters';
 import { extractErrorMessage } from '@/utils/errors';
 import VerifyQualificationModal from './components/VerifyQualificationModal.vue';
 import VerificationLogsTimeline from './components/VerificationLogsTimeline.vue';
+import QualificationDetailModal from './components/QualificationDetailModal.vue';
 import MemberDetailDrawer from './MemberDetailDrawer.vue';
 import {
   GraduationCap,
@@ -33,10 +36,13 @@ import {
   History,
   AlertTriangle,
   ExternalLink,
+  Eye,
+  User,
 } from 'lucide-vue-next';
 
 const lookupsStore = useLookupsStore();
 const notificationStore = useNotificationStore();
+const deskStore = useDeskStore();
 
 const qualificationsList = ref<IAcademicQualification[]>([]);
 const isLoading = ref(false);
@@ -58,6 +64,9 @@ const selectedDegreeLevel = ref<string>('');
 const search = ref('');
 
 // Modals State
+const isDetailModalOpen = ref(false);
+const activeQualificationForDetail = ref<IAcademicQualification | null>(null);
+
 const isVerifyModalOpen = ref(false);
 const activeQualificationForVerify = ref<IAcademicQualification | null>(null);
 
@@ -261,6 +270,19 @@ const stats = computed(() => {
   };
 });
 
+watch(
+  () => stats.value.pending,
+  (val) => {
+    deskStore.setPendingQualificationsCount(val);
+  },
+  { immediate: true }
+);
+
+function openDetailModal(item: IAcademicQualification) {
+  activeQualificationForDetail.value = item;
+  isDetailModalOpen.value = true;
+}
+
 function openVerifyModal(item: IAcademicQualification) {
   activeQualificationForVerify.value = item;
   isVerifyModalOpen.value = true;
@@ -271,12 +293,38 @@ function openTimelineModal(item: IAcademicQualification) {
   isTimelineModalOpen.value = true;
 }
 
+function getTableActionItems(item: IAcademicQualification): ActionItem[] {
+  const member = getMemberInfo(item.memberId, item);
+  return [
+    {
+      label: 'مشاهده جزئیات کامل',
+      icon: Eye,
+      onClick: () => openDetailModal(item),
+    },
+    {
+      label: 'گردش کار و سوابق تائید',
+      icon: History,
+      onClick: () => openTimelineModal(item),
+    },
+    {
+      label: 'مشاهده پرونده عضو',
+      icon: User,
+      onClick: () => {
+        if (member.id) openMemberProfile(member.id);
+      },
+    },
+  ];
+}
+
 function handleVerified(updatedQual: IAcademicQualification) {
   const idx = qualificationsList.value.findIndex((q) => q._id === updatedQual._id);
   if (idx >= 0) {
     qualificationsList.value[idx] = updatedQual;
   } else {
     qualificationsList.value.unshift(updatedQual);
+  }
+  if (activeQualificationForDetail.value?._id === updatedQual._id) {
+    activeQualificationForDetail.value = updatedQual;
   }
   // Also refresh in background from server
   loadQualifications();
@@ -621,11 +669,9 @@ function getStatusLabel(status?: string): string {
             <tr>
               <th scope="col" class="py-3 px-4 w-12 text-center">#</th>
               <th scope="col" class="py-3 px-4">مشخصات عضو / شرکت</th>
-              <th scope="col" class="py-3 px-4">عنوان و رشته تحصیلی</th>
-              <th scope="col" class="py-3 px-4">دانشگاه و محل تحصیل</th>
-              <th scope="col" class="py-3 px-4">دوره و معدل</th>
+              <th scope="col" class="py-3 px-4">مدرک تحصیلی و دانشگاه</th>
               <th scope="col" class="py-3 px-4">وضعیت تائید</th>
-              <th scope="col" class="py-3 px-4 text-center">عملیات کارشناسی</th>
+              <th scope="col" class="py-3 px-4 text-center w-48">عملیات کارشناسی</th>
             </tr>
           </thead>
 
@@ -699,54 +745,26 @@ function getStatusLabel(status?: string): string {
                 </div>
               </td>
 
-              <!-- Degree Title & Academic Field -->
+              <!-- Qualification & University -->
               <td class="py-3.5 px-4">
-                <div class="space-y-1">
-                  <div class="font-bold text-slate-900 dark:text-slate-100">
-                    {{ item.title }}
-                  </div>
-                  <div class="flex flex-wrap items-center gap-1.5">
+                <div
+                  class="space-y-1.5 cursor-pointer group"
+                  title="مشاهده جزئیات کامل مدرک تحصیلی"
+                  @click="openDetailModal(item)"
+                >
+                  <div class="flex items-center gap-2 flex-wrap">
                     <Badge variant="purple" size="sm">
                       {{ displayDegreeTitle(item.degreeLevel) }}
                     </Badge>
-                    <span class="text-[11px] text-slate-500 dark:text-slate-400">
-                      {{ displayFieldTitle(item.academicField) }}
+                    <span class="font-bold text-slate-900 dark:text-slate-100 group-hover:text-brand-600 transition">
+                      {{ displayFieldTitle(item.academicField) || item.title }}
                     </span>
                   </div>
-                </div>
-              </td>
-
-              <!-- University & City -->
-              <td class="py-3.5 px-4">
-                <div class="flex items-center gap-1.5">
-                  <Building2 class="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                  <span class="font-semibold text-slate-800 dark:text-slate-200">
-                    {{ item.institution || '—' }}
-                  </span>
-                </div>
-                <div v-if="item.city" class="text-[11px] text-slate-400 mt-0.5 mr-5">
-                  شهر: {{ item.city }}
-                </div>
-              </td>
-
-              <!-- Years & GPA -->
-              <td class="py-3.5 px-4 tabular-nums">
-                <div class="font-semibold text-slate-700 dark:text-slate-300">
-                  <template v-if="item.startYear && item.graduationYear">
-                    {{ toPersianDigits(item.startYear) }} الی {{ toPersianDigits(item.graduationYear) }}
-                  </template>
-                  <template v-else-if="item.graduationYear">
-                    فارغ‌التحصیل {{ toPersianDigits(item.graduationYear) }}
-                  </template>
-                  <template v-else>—</template>
-                </div>
-                <div class="text-[11px] text-amber-600 dark:text-amber-400 font-bold mt-0.5">
-                  <template v-if="item.gpa !== undefined && item.gpa !== null">
-                    معدل: {{ toPersianDigits(item.gpa) }} از ۲۰
-                  </template>
-                  <template v-else>
-                    <span class="text-slate-400 font-normal">معدل نامشخص</span>
-                  </template>
+                  <div class="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    <Building2 class="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span class="font-semibold text-slate-700 dark:text-slate-300">{{ item.institution || 'دانشگاه نامشخص' }}</span>
+                    <span v-if="item.city" class="text-slate-400">• شهر: {{ item.city }}</span>
+                  </div>
                 </div>
               </td>
 
@@ -768,23 +786,24 @@ function getStatusLabel(status?: string): string {
                   <!-- Rejection Reason Preview if Rejected -->
                   <div
                     v-if="normalizeStatus(item.verificationStatus) === 'REJECTED' && item.rejectionReason"
-                    class="text-[11px] text-rose-700 dark:text-rose-400 max-w-xs truncate flex items-center gap-1"
-                    :title="item.rejectionReason"
+                    class="text-[11px] text-rose-700 dark:text-rose-400 max-w-xs truncate flex items-center gap-1 cursor-pointer hover:underline"
+                    :title="formatWorkflowLogComment(item.rejectionReason)"
+                    @click="openDetailModal(item)"
                   >
                     <AlertTriangle class="w-3 h-3 text-rose-500 shrink-0" />
-                    <span class="truncate">{{ item.rejectionReason }}</span>
+                    <span class="truncate">{{ formatWorkflowLogComment(item.rejectionReason) }}</span>
                   </div>
                 </div>
               </td>
 
               <!-- Actions -->
               <td class="py-3.5 px-4 text-center">
-                <div class="flex items-center justify-center gap-1.5">
-                  <!-- Verify Decision Button -->
+                <div class="inline-flex items-center justify-center gap-2">
+                  <!-- Verify Decision Button (Primary Button Kept As-Is!) -->
                   <Button
                     variant="primary"
                     size="sm"
-                    class="text-xs"
+                    class="text-xs font-bold shadow-xs shrink-0"
                     title="بررسی و تائید / رد مدرک"
                     @click="openVerifyModal(item)"
                   >
@@ -792,17 +811,12 @@ function getStatusLabel(status?: string): string {
                     بررسی مدرک
                   </Button>
 
-                  <!-- Audit Logs Timeline Button -->
-                  <Button
-                    variant="outline"
+                  <!-- More Actions Dropdown (...) -->
+                  <TableActions
                     size="sm"
-                    class="text-xs"
-                    title="تاریخچه و لاگ گردش کار"
-                    @click="openTimelineModal(item)"
-                  >
-                    <History class="w-3.5 h-3.5 ml-1" />
-                    گردش کار
-                  </Button>
+                    menu-title="سایر عملیات"
+                    :items="getTableActionItems(item)"
+                  />
                 </div>
               </td>
             </tr>
@@ -820,6 +834,16 @@ function getStatusLabel(status?: string): string {
         </span>
       </div>
     </div>
+
+    <!-- Qualification Detail Modal -->
+    <QualificationDetailModal
+      v-model:open="isDetailModalOpen"
+      :qualification="activeQualificationForDetail"
+      :member-info="getMemberInfo(activeQualificationForDetail?.memberId, activeQualificationForDetail)"
+      @verify="openVerifyModal"
+      @timeline="openTimelineModal"
+      @open-member="openMemberProfile"
+    />
 
     <!-- Verify Modal -->
     <VerifyQualificationModal

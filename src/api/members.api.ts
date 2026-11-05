@@ -57,6 +57,17 @@ export const membersApi = {
     return response.data;
   },
 
+  /**
+   * Admin sets a member portal password
+   * POST /api/v1/members/:id/password
+   */
+  async setMemberPassword(memberId: string, newPassword: string): Promise<ApiResponse<null>> {
+    const response = await apiClient.post<ApiResponse<null>>(`/members/${memberId}/password`, {
+      newPassword,
+    });
+    return response.data;
+  },
+
   // Address sub-resource
   async getMemberAddresses(memberId: string): Promise<ApiResponse<MemberAddress[]>> {
     const response = await apiClient.get<ApiResponse<MemberAddress[]>>(`/members/${memberId}/addresses`);
@@ -314,7 +325,7 @@ export const membersApi = {
       certFile = rawData.certificateFile;
     }
 
-    const initialLog = createVerificationLog('PENDING', undefined, 'Initial registration - Pending expert verification');
+    const initialLog = createVerificationLog('PENDING', undefined, 'ثبت اولیه مدرک - در انتظار تایید کارشناس');
     const newSkill: IMemberSkill = {
       _id: `skill_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       memberId,

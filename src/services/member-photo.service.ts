@@ -1,10 +1,9 @@
 import axios from 'axios';
 import type { IMemberSummary, IApiResponse } from '@/types/member-photo.types';
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+import { getApiBaseUrl, getServerUrl } from '@/config';
 
 const apiClient = axios.create({
-  baseURL: BASE_URL,
+  baseURL: getApiBaseUrl(),
 });
 
 // Attach Authorization header (supports nasrplus_member_token, nasrplus_token, and token keys)
@@ -69,13 +68,7 @@ export function resolvePhotoUrl(path?: string | null, timestamp?: number): strin
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return timestamp ? `${path}${path.includes('?') ? '&' : '?'}t=${timestamp}` : path;
   }
-  const baseUrl =
-    import.meta.env.VITE_SERVER_URL ||
-    (import.meta.env.VITE_API_BASE_URL
-      ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1\/?$/, '')
-      : '') ||
-    'http://localhost:5000';
-  const cleanBase = baseUrl.replace(/\/$/, '');
+  const cleanBase = getServerUrl();
   const cleanPath = path.replace(/^\//, '');
   const url = `${cleanBase}/${cleanPath}`;
   return timestamp ? `${url}?t=${timestamp}` : url;

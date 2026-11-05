@@ -6,7 +6,7 @@ import type {
   SkillVerificationStatus,
 } from '@/types';
 import { Modal, Button, EmptyState } from '@/components/ui';
-import { formatPersianDate } from '@/utils/formatters';
+import { formatPersianDate, formatWorkflowLogComment, formatWorkflowOperatorName } from '@/utils/formatters';
 import {
   History,
   CheckCircle2,
@@ -80,11 +80,7 @@ function getStatusDotColor(status?: SkillVerificationStatus): string {
 }
 
 function getOperatorName(changedBy: any): string {
-  if (!changedBy) return 'سیستم / ثبت خودکار';
-  if (typeof changedBy === 'object') {
-    return changedBy.fullName || changedBy.username || 'کارشناس صنف';
-  }
-  return String(changedBy);
+  return formatWorkflowOperatorName(changedBy);
 }
 
 const skillTitle = computed(() => {
@@ -205,7 +201,7 @@ const skillTitle = computed(() => {
                 <span>علت رد:</span>
               </div>
               <p class="text-rose-600 dark:text-rose-400 text-2xs leading-relaxed">
-                {{ log.rejectionReason }}
+                {{ formatWorkflowLogComment(log.rejectionReason) }}
               </p>
             </div>
 
@@ -215,7 +211,7 @@ const skillTitle = computed(() => {
               class="flex items-start gap-1.5 text-2xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200/50 dark:border-slate-700/50"
             >
               <MessageSquareQuote class="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-              <p class="leading-relaxed">{{ log.comment }}</p>
+              <p class="leading-relaxed">{{ formatWorkflowLogComment(log.comment) }}</p>
             </div>
           </div>
         </div>

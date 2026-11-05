@@ -18,6 +18,7 @@ import {
   ArrowRight,
   ChevronLeft,
   LayoutGrid,
+  Users,
 } from 'lucide-vue-next';
 import {
   Button,
@@ -60,20 +61,20 @@ interface LookupCategoryDef {
 
 const categories: LookupCategoryDef[] = [
   {
+    id: 'specializations',
+    label: 'رسته‌های تخصصی فاوا',
+    description: 'مدیریت و تعریف رسته‌ها و شاخه‌های تخصصی فناوری اطلاعات و ارتباطات (صنعت فاوا)',
+    icon: Layers,
+    color: 'cyan',
+    getCount: () => lookupsStore.specializations.length,
+  },
+  {
     id: 'membership-types',
     label: 'انواع عضویت',
     description: 'مدیریت انواع عضویت تعریف شده در سازمان نظام صنفی',
     icon: Bookmark,
     color: 'emerald',
     getCount: () => lookupsStore.membershipTypes.length,
-  },
-  {
-    id: 'specializations',
-    label: 'رسته‌های تخصصی',
-    description: 'مدیریت رسته‌ها و شاخه‌های تخصصی فاوا و فناوری اطلاعات',
-    icon: Layers,
-    color: 'cyan',
-    getCount: () => lookupsStore.specializations.length,
   },
   {
     id: 'ranks',
@@ -114,12 +115,13 @@ const hubSearchQuery = ref('');
 const tableSearchQuery = ref('');
 const isSubmitting = ref(false);
 
-// Sync with route query param
+// Sync with route query param or route param
 watch(
-  () => route.query.tab,
-  (newTab) => {
-    if (newTab && categories.some((c) => c.id === newTab)) {
-      selectedLookup.value = newTab as LookupTab;
+  () => [route.query.tab, route.params.tab],
+  ([newQueryTab, newParamTab]) => {
+    const activeTab = (newParamTab as string) || (newQueryTab as string);
+    if (activeTab && categories.some((c) => c.id === activeTab)) {
+      selectedLookup.value = activeTab as LookupTab;
     } else {
       selectedLookup.value = null;
     }
@@ -129,7 +131,11 @@ watch(
 
 function selectCategory(id: LookupTab) {
   selectedLookup.value = id;
-  router.push({ query: { ...route.query, tab: id } });
+  if (route.params.tab) {
+    router.push({ path: `/admin/lookups/${id}`, query: route.query });
+  } else {
+    router.push({ query: { ...route.query, tab: id } });
+  }
   tableSearchQuery.value = '';
 }
 
@@ -137,7 +143,7 @@ function backToHub() {
   selectedLookup.value = null;
   const q = { ...route.query };
   delete q.tab;
-  router.push({ query: q });
+  router.push({ path: '/admin/lookups', query: q });
   tableSearchQuery.value = '';
 }
 
@@ -392,6 +398,43 @@ async function handleDeleteItem() {
   } finally {
     isDeleting.value = false;
   }
+}
+
+watch(
+  currentCategory,
+  (cat) => {
+    if (cat) {
+      document.title = `مدیریت ${cat.label} | سامانه نصر پلاس`;
+    } else {
+      document.title = 'اطلاعات پایه و دسته‌بندی‌ها | سامانه نصر پلاس';
+    }
+  },
+  { immediate: true }
+);
+
+function getTableActions(item: any) {
+  const actions: any[] = [];
+  if (selectedLookup.value === 'specializations') {
+    actions.push({
+      label: 'مشاهده اعضای این رسته',
+      icon: Users,
+      onClick: () => {
+        router.push({
+          path: '/admin/members',
+          query: { specializationId: item._id },
+        });
+      },
+    });
+  }
+  actions.push({
+    label: 'حذف مورد',
+    icon: Trash2,
+    danger: true,
+    onClick: () => {
+      itemToDelete.value = { id: item._id, title: item.title };
+    },
+  });
+  return actions;
 }
 
 onMounted(() => {
@@ -709,14 +752,7 @@ onMounted(() => {
                     :primary-icon="Edit"
                     primary-title="ویرایش اطلاعات"
                     @primary="openEditModal(item)"
-                    :items="[
-                      {
-                        label: 'حذف مورد',
-                        icon: Trash2,
-                        danger: true,
-                        onClick: () => { itemToDelete = { id: item._id, title: item.title }; },
-                      },
-                    ]"
+                    :items="getTableActions(item)"
                   />
                 </td>
               </tr>
@@ -729,26 +765,30 @@ onMounted(() => {
     <!-- Create / Edit Modal -->
     <Modal
       :open="isFormModalOpen"
-      :title="editingId ? 'ویرایش رکورد پایه' : 'افزودن رکورد جدید'"
-      :subtitle="currentCategory?.label"
+      :title="editingId ? `ویرایش ${currentCategory?.label || 'رکورد پایه'}` : `افزودن ${currentCategory?.label || 'رکورد جدید'}`"
+      :subtitle="selectedLookup === 'specializations' ? 'تعریف شاخه تخصصی فناوری اطلاعات جهت انتخاب در فرم‌های عضویت و مهارت اعضا' : currentCategory?.label"
       size="md"
       @close="isFormModalOpen = false"
     >
       <form class="space-y-4 text-right" @submit.prevent="handleSaveItem">
         <Input
           v-model="formTitle"
-          label="عنوان"
-          placeholder="عنوان مورد نظر را وارد نمایید"
+          :label="selectedLookup === 'specializations' ? 'عنوان رسته تخصصی فاوا' : 'عنوان'"
+          :placeholder="selectedLookup === 'specializations' ? 'مثال: برنامه نویس بک اند، برنامه نویس فرانت اند، تحلیلگر داده...' : 'عنوان مورد نظر را وارد نمایید'"
           required
         />
 
         <Input
           v-if="['membership-types', 'specializations', 'nature-of-memberships'].includes(selectedLookup || '')"
           v-model="formCode"
-          label="کد انگلیسی شناسه (Code)"
-          placeholder="کد شناسه انگلیسی را وارد نمایید"
+          :label="selectedLookup === 'specializations' ? 'کد انگلیسی شناسه رسته (اختیاری)' : 'کد انگلیسی شناسه (Code)'"
+          :placeholder="selectedLookup === 'specializations' ? 'مثال: BACKEND_DEV' : 'کد شناسه انگلیسی را وارد نمایید'"
           dir="ltr"
         />
+
+        <p v-if="selectedLookup === 'specializations'" class="text-2xs text-slate-400 dark:text-slate-500 pt-0.5 leading-relaxed">
+          نکته: عناوین ثبت شده در این بخش، در فرم‌های ثبت‌نام و مدیریت اعضا در فیلد «رسته تخصصی فاوا» نمایش داده می‌شوند.
+        </p>
 
         <Input
           v-if="selectedLookup === 'ranks'"

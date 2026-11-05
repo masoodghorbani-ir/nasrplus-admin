@@ -13,6 +13,21 @@ export interface MemberPortalLoginResponse {
 
 export const memberPortalApi = {
   /**
+   * Change the signed-in member password
+   * POST /api/v1/members/portal/change-password
+   */
+  async changePassword(payload: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<ApiResponse<null>> {
+    const response = await apiClient.post<ApiResponse<null>>(
+      '/members/portal/change-password',
+      payload
+    );
+    return response.data;
+  },
+
+  /**
    * Login as member using Membership Code & National Code
    * POST /api/v1/members/portal/login
    */

@@ -7,6 +7,7 @@ import MemberLoginCard from './components/MemberLoginCard.vue';
 import MemberOverviewDashboard from './components/MemberOverviewDashboard.vue';
 import MemberPersonalInfoTab from './components/MemberPersonalInfoTab.vue';
 import MemberPhotoTab from './components/MemberPhotoTab.vue';
+import MemberChangePasswordTab from './components/MemberChangePasswordTab.vue';
 import MemberQualificationsTab from '@/views/members/components/MemberQualificationsTab.vue';
 import MemberSkillsTab from '@/views/members/components/MemberSkillsTab.vue';
 import MemberPhotoModal from '@/views/members/components/MemberPhotoModal.vue';
@@ -17,12 +18,13 @@ import {
   GraduationCap,
   Sparkles,
   Camera,
+  KeyRound,
   Sun,
   Moon,
   ArrowRight,
 } from 'lucide-vue-next';
 
-type TabKey = 'dashboard' | 'info' | 'qualifications' | 'skills' | 'photo';
+type TabKey = 'dashboard' | 'info' | 'qualifications' | 'skills' | 'photo' | 'password';
 
 const route = useRoute();
 const router = useRouter();
@@ -40,6 +42,7 @@ const tabs = [
   { key: 'qualifications', label: 'مدارک تحصیلی', icon: GraduationCap },
   { key: 'skills', label: 'مهارت‌ها', icon: Sparkles },
   { key: 'photo', label: 'تصویر پرسنلی', icon: Camera },
+  { key: 'password', label: 'رمز عبور', icon: KeyRound },
 ] as const;
 
 function scrollActiveTabIntoView(tabKey: string) {
@@ -73,7 +76,7 @@ function goHome() {
 watch(
   () => route.query.tab,
   (newTab) => {
-    if (newTab && ['dashboard', 'info', 'qualifications', 'skills', 'photo'].includes(newTab as string)) {
+    if (newTab && ['dashboard', 'info', 'qualifications', 'skills', 'photo', 'password'].includes(newTab as string)) {
       activeTab.value = newTab as TabKey;
       scrollActiveTabIntoView(newTab as string);
     } else {
@@ -246,6 +249,10 @@ onMounted(async () => {
           :member="memberAuthStore.member"
           @openPhotoModal="isPhotoModalOpen = true"
         />
+      </div>
+
+      <div v-else-if="activeTab === 'password'">
+        <MemberChangePasswordTab />
       </div>
     </main>
 

@@ -25,12 +25,14 @@ interface Props {
   primaryVariant?: 'brand' | 'outline' | 'default';
   items?: ActionItem[];
   menuTitle?: string;
+  size?: 'sm' | 'default';
 }
 
 const props = withDefaults(defineProps<Props>(), {
   primaryVariant: 'brand',
   items: () => [],
   menuTitle: 'سایر عملیات',
+  size: 'default',
 });
 
 const emit = defineEmits<{
@@ -151,7 +153,8 @@ onUnmounted(() => {
         v-if="primaryLabel"
         type="button"
         :class="[
-          'inline-flex items-center gap-1.5 h-7.5 px-2.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer select-none shadow-xs',
+          'inline-flex items-center gap-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer select-none shadow-xs',
+          size === 'sm' ? 'h-9 px-3.5' : 'h-7.5 px-2.5',
           primaryVariantClasses
         ]"
         :title="primaryTitle || primaryLabel"
@@ -172,7 +175,8 @@ onUnmounted(() => {
         ref="triggerRef"
         type="button"
         :class="[
-          'inline-flex items-center justify-center h-7.5 w-7.5 rounded-lg transition-all duration-150 cursor-pointer select-none shadow-xs',
+          'inline-flex items-center justify-center rounded-lg transition-all duration-150 cursor-pointer select-none shadow-xs',
+          size === 'sm' ? 'h-9 w-9' : 'h-7.5 w-7.5',
           'border border-slate-200 dark:border-slate-700/80',
           isOpen
             ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 ring-2 ring-brand-500/20 border-brand-400 dark:border-brand-600'
@@ -183,7 +187,7 @@ onUnmounted(() => {
         :aria-expanded="isOpen"
         @click.stop="toggleMenu"
       >
-        <MoreVertical class="w-3.5 h-3.5" />
+        <MoreVertical :class="size === 'sm' ? 'w-4 h-4' : 'w-3.5 h-3.5'" />
       </button>
 
       <!-- Dropdown Menu Teleported to Body -->

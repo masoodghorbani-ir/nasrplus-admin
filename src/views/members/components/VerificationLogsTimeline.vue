@@ -6,7 +6,7 @@ import type {
   QualificationVerificationStatus,
 } from '@/types';
 import { Modal, Button, EmptyState } from '@/components/ui';
-import { formatPersianDate } from '@/utils/formatters';
+import { formatPersianDate, formatWorkflowLogComment, formatWorkflowOperatorName } from '@/utils/formatters';
 import {
   History,
   CheckCircle2,
@@ -80,11 +80,7 @@ function getStatusDotColor(status?: QualificationVerificationStatus): string {
 }
 
 function getOperatorName(changedBy: any): string {
-  if (!changedBy) return 'سیستم / ثبت خودکار';
-  if (typeof changedBy === 'object') {
-    return changedBy.fullName || changedBy.username || 'کارشناس صنف';
-  }
-  return String(changedBy);
+  return formatWorkflowOperatorName(changedBy);
 }
 </script>
 
@@ -213,7 +209,7 @@ function getOperatorName(changedBy: any): string {
                 <span v-if="log.toStatus === 'REJECTED'" class="font-bold block mb-0.5 text-rose-700 dark:text-rose-300">
                   علت رد مدرک:
                 </span>
-                <span>{{ log.comment }}</span>
+                <span>{{ formatWorkflowLogComment(log.comment) }}</span>
               </div>
             </div>
           </div>

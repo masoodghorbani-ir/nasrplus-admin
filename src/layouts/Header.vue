@@ -11,8 +11,11 @@ import {
   Shield,
   ShieldCheck,
   ChevronDown,
+  KeyRound,
 } from 'lucide-vue-next';
 import { Modal, Button, ConfirmDialog, Badge } from '@/components/ui';
+import ChangePasswordForm from '@/components/auth/ChangePasswordForm.vue';
+import { authApi } from '@/api';
 
 const route = useRoute();
 const router = useRouter();
@@ -22,6 +25,7 @@ const notificationStore = useNotificationStore();
 
 const isUserMenuOpen = ref(false);
 const isProfileModalOpen = ref(false);
+const isPasswordModalOpen = ref(false);
 const isLogoutModalOpen = ref(false);
 
 const breadcrumbTitle = computed(() => {
@@ -39,6 +43,11 @@ function closeUserMenu() {
 function openProfile() {
   closeUserMenu();
   isProfileModalOpen.value = true;
+}
+
+function openPassword() {
+  closeUserMenu();
+  isPasswordModalOpen.value = true;
 }
 
 function promptLogout() {
@@ -201,6 +210,15 @@ function handleLogout() {
                 <span class="truncate">اطلاعات حساب و دسترسی‌ها</span>
               </button>
 
+              <button
+                type="button"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
+                @click="openPassword"
+              >
+                <KeyRound class="w-4 h-4 text-slate-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors shrink-0" />
+                <span class="truncate">تغییر رمز عبور</span>
+              </button>
+
               <div class="my-1 border-t border-slate-100 dark:border-slate-800/80" />
 
               <button
@@ -290,6 +308,20 @@ function handleLogout() {
         بستن پنجره
       </Button>
     </template>
+  </Modal>
+
+  <Modal
+    :open="isPasswordModalOpen"
+    title="تغییر رمز عبور"
+    subtitle="رمز فعلی را تأیید کنید و رمز جدید حساب مدیریت را ثبت نمایید"
+    size="sm"
+    @close="isPasswordModalOpen = false"
+  >
+    <ChangePasswordForm
+      v-if="isPasswordModalOpen"
+      :submit="authApi.changePassword"
+      @success="isPasswordModalOpen = false"
+    />
   </Modal>
 
   <!-- Logout Confirmation Dialog -->

@@ -13,7 +13,7 @@ import {
   ConfirmDialog,
   EmptyState,
 } from '@/components/ui';
-import { toPersianDigits, formatPersianDate } from '@/utils/formatters';
+import { toPersianDigits, formatPersianDate, formatWorkflowLogComment } from '@/utils/formatters';
 import { extractErrorMessage } from '@/utils/errors';
 import QualificationFormModal from './QualificationFormModal.vue';
 import VerifyQualificationModal from './VerifyQualificationModal.vue';
@@ -472,7 +472,7 @@ function getStatusLabel(status: QualificationVerificationStatus): string {
             <strong class="font-bold text-rose-700 dark:text-rose-300 ml-1">
               علت رد مدرک:
             </strong>
-            <span>{{ qual.rejectionReason }}</span>
+            <span>{{ formatWorkflowLogComment(qual.rejectionReason) }}</span>
           </div>
         </div>
 
