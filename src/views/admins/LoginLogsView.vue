@@ -235,6 +235,12 @@ onMounted(() => {
   }
   fetchLogs();
 });
+
+defineExpose({
+  fetchLogs,
+  totalRecords,
+  isLoading,
+});
 </script>
 
 <template>

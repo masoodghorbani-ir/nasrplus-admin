@@ -46,6 +46,22 @@ async function checkHealth() {
   }
 }
 
+const props = withDefaults(
+  defineProps<{
+    embedded?: boolean;
+  }>(),
+  {
+    embedded: false,
+  }
+);
+
+defineExpose({
+  checkHealth,
+  isLoading,
+  healthData,
+  latencyMs,
+});
+
 onMounted(() => {
   checkHealth();
 });
@@ -54,7 +70,10 @@ onMounted(() => {
 <template>
   <div class="space-y-6 text-right select-none" dir="rtl">
     <!-- Header Title & Action Buttons -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
+    <div
+      v-if="!embedded"
+      class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1"
+    >
       <div>
         <h1 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
           وضعیت سامانه

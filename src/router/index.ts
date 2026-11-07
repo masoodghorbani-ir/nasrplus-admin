@@ -218,15 +218,30 @@ const routes: RouteRecordRaw[] = [
         redirect: '/admin/admins',
       },
       {
-        path: 'login-logs',
-        name: 'AdminLoginLogs',
-        component: () => import('@/views/admins/LoginLogsView.vue'),
+        path: 'settings',
+        name: 'ManagementSettings',
+        component: () => import('@/views/settings/ManagementSettingsView.vue'),
         meta: {
           requiresAuth: true,
           requiresSuperAdmin: true,
-          title: 'لاگ‌های ورود به سیستم',
+          title: 'تنظیمات مدیریتی',
           permission: 'admins:manage',
         },
+      },
+      {
+        path: 'settings/:tab',
+        name: 'ManagementSettingsTab',
+        component: () => import('@/views/settings/ManagementSettingsView.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresSuperAdmin: true,
+          title: 'تنظیمات مدیریتی',
+          permission: 'admins:manage',
+        },
+      },
+      {
+        path: 'login-logs',
+        redirect: '/admin/settings/login-logs',
       },
     ],
   },
@@ -293,8 +308,16 @@ const routes: RouteRecordRaw[] = [
     redirect: '/admin/admins',
   },
   {
+    path: '/settings',
+    redirect: '/admin/settings',
+  },
+  {
+    path: '/settings/:tab',
+    redirect: (to) => `/admin/settings/${to.params.tab}`,
+  },
+  {
     path: '/login-logs',
-    redirect: '/admin/login-logs',
+    redirect: '/admin/settings/login-logs',
   },
 
   // 7. Fallback Catch-all Route
