@@ -10,6 +10,8 @@ import {
   Button,
   ConfirmDialog,
   EmptyState,
+  TableActions,
+  type ActionItem,
 } from '@/components/ui';
 import { toPersianDigits, formatPersianDate, formatWorkflowLogComment } from '@/utils/formatters';
 import { extractErrorMessage } from '@/utils/errors';
@@ -131,9 +133,46 @@ function getRemainingEditTimeMs(item: { createdAt?: string }): number {
   return Math.max(0, remaining);
 }
 
-function canEditOrDelete(item: { createdAt?: string }): boolean {
+function isReviewedByExpert(item: { verificationStatus?: string; verifiedAt?: string | null; rejectionReason?: string } | null | undefined): boolean {
+  if (!item) return false;
+  if (item.verificationStatus && item.verificationStatus !== 'PENDING') return true;
+  if (Boolean(item.verifiedAt)) return true;
+  if (Boolean(item.rejectionReason && item.rejectionReason.trim())) return true;
+  return false;
+}
+
+function canEditOrDelete(item: { createdAt?: string; verificationStatus?: string; verifiedAt?: string | null; rejectionReason?: string }): boolean {
   if (!isTimeRestricted.value) return true;
+  if (isReviewedByExpert(item)) return false;
   return getRemainingEditTimeMs(item) > 0;
+}
+
+function getEditBlockReason(item: { createdAt?: string; verificationStatus?: string; verifiedAt?: string | null; rejectionReason?: string }): string {
+  if (isReviewedByExpert(item)) {
+    return 'چون کارشناس مدارک شمارو بررسی و اعمال نظر کرده دیگه امکان ویرایش ندارید';
+  }
+  return 'ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد و این زمان به پایان رسیده است.';
+}
+
+function getEditButtonTitle(item: IMemberSkill): string {
+  if (!isTimeRestricted.value) return 'ویرایش مهارت';
+  if (isReviewedByExpert(item)) {
+    return 'چون کارشناس مدارک شمارو بررسی و اعمال نظر کرده دیگه امکان ویرایش ندارید';
+  }
+  if (!canEditOrDelete(item)) {
+    return 'مهلت ۱۰ دقیقه‌ای ویرایش به پایان رسیده است';
+  }
+  return 'ویرایش مهارت';
+}
+
+function getTimerBadgeTitle(item: IMemberSkill): string {
+  if (isReviewedByExpert(item)) {
+    return 'چون کارشناس مدارک شمارو بررسی و اعمال نظر کرده دیگه امکان ویرایش ندارید';
+  }
+  if (canEditOrDelete(item)) {
+    return 'ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد';
+  }
+  return 'مهلت ۱۰ دقیقه‌ای ویرایش و حذف به پایان رسیده است';
 }
 
 function formatRemainingTime(item: { createdAt?: string }): string {
@@ -184,7 +223,7 @@ function handleOpenCreate() {
 
 function handleOpenEdit(skill: IMemberSkill) {
   if (!canEditOrDelete(skill)) {
-    notificationStore.warning('ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد و این زمان به پایان رسیده است.');
+    notificationStore.warning(getEditBlockReason(skill));
     return;
   }
   editingSkill.value = skill;
@@ -210,7 +249,7 @@ function handleOpenPreview(skill: IMemberSkill) {
 
 function handleConfirmDelete(skill: IMemberSkill) {
   if (!canEditOrDelete(skill)) {
-    notificationStore.warning('ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد و این زمان به پایان رسیده است.');
+    notificationStore.warning(getEditBlockReason(skill));
     return;
   }
   itemToDelete.value = skill;
@@ -218,6 +257,11 @@ function handleConfirmDelete(skill: IMemberSkill) {
 
 async function executeDelete() {
   if (!itemToDelete.value?._id || !props.memberId) return;
+  if (!canEditOrDelete(itemToDelete.value)) {
+    notificationStore.warning(getEditBlockReason(itemToDelete.value));
+    itemToDelete.value = null;
+    return;
+  }
   isDeleting.value = true;
   try {
     await membersApi.deleteMemberSkill(props.memberId, itemToDelete.value._id);
@@ -247,6 +291,31 @@ function handleSkillVerified(updated: IMemberSkill) {
   emit('updated');
 }
 
+function getSkillActionItems(skill: IMemberSkill): ActionItem[] {
+  const isEditable = canEditOrDelete(skill);
+  const items: ActionItem[] = [];
+
+  if (props.allowVerify) {
+    items.push({
+      label: 'ویرایش مهارت',
+      icon: Edit2,
+      disabled: !isEditable,
+      onClick: () => handleOpenEdit(skill),
+    });
+  }
+
+  items.push({
+    label: 'حذف مهارت',
+    icon: Trash2,
+    danger: true,
+    divider: props.allowVerify,
+    disabled: !isEditable,
+    onClick: () => handleConfirmDelete(skill),
+  });
+
+  return items;
+}
+
 function getSpecTitle(skill: IMemberSkill): string {
   if (typeof skill.specializationId === 'object' && skill.specializationId?.title) {
     return skill.specializationId.title;
@@ -269,7 +338,7 @@ function getSpecTitle(skill: IMemberSkill): string {
       <div class="flex-1 min-w-0">
         <span class="block">ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد</span>
         <span class="block text-2xs sm:text-xs text-amber-700 dark:text-amber-400 font-normal mt-0.5">
-          پس از ثبت مهارت و تخصص، حداکثر تا ۱۰ دقیقه فرصت ویرایش اطلاعات یا حذف آن را خواهید داشت.
+          پس از ثبت مهارت و تخصص، حداکثر تا ۱۰ دقیقه (یا تا پیش از بررسی کارشناس) فرصت ویرایش اطلاعات یا حذف آن را خواهید داشت.
         </span>
       </div>
     </div>
@@ -410,13 +479,16 @@ function getSpecTitle(skill: IMemberSkill): string {
                 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-2xs font-bold border transition-colors',
                 canEditOrDelete(skill)
                   ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
+                  : isReviewedByExpert(skill)
+                  ? 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
                   : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
               ]"
-              :title="canEditOrDelete(skill) ? 'ویرایش و حذف تنها به مدت 10 دقیقه برای شما فعال میباشد' : 'مهلت ۱۰ دقیقه‌ای ویرایش و حذف به پایان رسیده است'"
+              :title="getTimerBadgeTitle(skill)"
             >
               <Clock v-if="canEditOrDelete(skill)" class="w-3 h-3 text-amber-600 dark:text-amber-400 animate-pulse" />
               <Lock v-else class="w-3 h-3 text-slate-400" />
               <span v-if="canEditOrDelete(skill)">مهلت ویرایش/حذف: {{ formatRemainingTime(skill) }}</span>
+              <span v-else-if="isReviewedByExpert(skill)">قفل شده (بررسی کارشناس)</span>
               <span v-else>قفل شده (اتمام ۱۰ دقیقه)</span>
             </span>
           </div>
@@ -434,6 +506,15 @@ function getSpecTitle(skill: IMemberSkill): string {
           <p class="text-rose-600 dark:text-rose-400 leading-relaxed text-2xs pr-5">
             {{ formatWorkflowLogComment(skill.rejectionReason) }}
           </p>
+        </div>
+
+        <!-- Expert Review Notice Box (Locked for Editing) -->
+        <div
+          v-if="isTimeRestricted && isReviewedByExpert(skill)"
+          class="p-2.5 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-900/50 rounded-xl text-xs flex items-center gap-2 text-amber-800 dark:text-amber-300"
+        >
+          <Lock class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span>چون کارشناس مدارک شمارو بررسی و اعمال نظر کرده دیگه امکان ویرایش ندارید</span>
         </div>
 
         <!-- Middle Details: Self-Assessment Degree & Certificate Status -->
@@ -518,48 +599,27 @@ function getSpecTitle(skill: IMemberSkill): string {
             <span>تاریخچه بررسی ({{ toPersianDigits(skill.verificationLogs?.length || 1) }})</span>
           </button>
 
-          <!-- Action Buttons Group -->
-          <div class="flex items-center gap-1.5">
-            <!-- Expert Review Button (Admin) -->
-            <Button
+          <!-- Action Buttons (Single Primary + TableActions Dropdown) -->
+          <div class="flex items-center">
+            <TableActions
               v-if="allowVerify"
-              variant="outline"
-              size="sm"
-              class="h-8 text-xs font-bold text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-800 hover:bg-brand-50 dark:hover:bg-brand-950/40"
-              title="کارشناسی و تعیین وضعیت مهارت"
-              @click="handleOpenVerify(skill)"
-            >
-              <ShieldCheck class="w-3.5 h-3.5 ml-1 text-brand-600 shrink-0" />
-              کارشناسی و تائید
-            </Button>
-
-            <!-- Edit Button -->
-            <Button
-              variant="outline"
-              size="sm"
-              class="h-8 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 transition-opacity"
-              :class="!canEditOrDelete(skill) ? 'opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500 hover:bg-transparent' : ''"
-              :disabled="!canEditOrDelete(skill)"
-              :title="!canEditOrDelete(skill) ? 'مهلت ۱۰ دقیقه‌ای ویرایش به پایان رسیده است' : 'ویرایش مهارت'"
-              @click="handleOpenEdit(skill)"
-            >
-              <Edit2 class="w-3.5 h-3.5 ml-1 text-slate-500 dark:text-slate-400 shrink-0" />
-              ویرایش
-            </Button>
-
-            <!-- Delete Button -->
-            <Button
-              variant="outline"
-              size="sm"
-              class="h-8 text-xs font-medium text-rose-600 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-opacity"
-              :class="!canEditOrDelete(skill) ? 'opacity-40 cursor-not-allowed border-slate-200 text-slate-400 dark:text-slate-500 hover:bg-transparent' : ''"
-              :disabled="!canEditOrDelete(skill)"
-              :title="!canEditOrDelete(skill) ? 'مهلت ۱۰ دقیقه‌ای حذف به پایان رسیده است' : 'حذف مهارت'"
-              @click="handleConfirmDelete(skill)"
-            >
-              <Trash2 class="w-3.5 h-3.5 ml-1 text-rose-500 shrink-0" />
-              حذف
-            </Button>
+              primary-label="کارشناسی و تائید"
+              :primary-icon="ShieldCheck"
+              primary-title="کارشناسی و تعیین وضعیت مهارت"
+              primary-variant="brand"
+              @primary="handleOpenVerify(skill)"
+              :items="getSkillActionItems(skill)"
+            />
+            <TableActions
+              v-else
+              primary-label="ویرایش"
+              :primary-icon="Edit2"
+              :primary-title="getEditButtonTitle(skill)"
+              :primary-disabled="!canEditOrDelete(skill)"
+              primary-variant="outline"
+              @primary="handleOpenEdit(skill)"
+              :items="getSkillActionItems(skill)"
+            />
           </div>
         </div>
       </div>

@@ -50,7 +50,10 @@ apiClient.interceptors.response.use(
         currentPath.startsWith('/register') ||
         currentPath.startsWith('/landing') ||
         currentPath.startsWith('/portal') ||
-        currentPath.startsWith('/join');
+        currentPath.startsWith('/join') ||
+        currentPath.startsWith('/inquiry') ||
+        currentPath.startsWith('/member-inquiry') ||
+        currentPath.startsWith('/estelam');
 
       if (!isPublicRoute && !isPasswordChange) {
         localStorage.removeItem('nasrplus_token');

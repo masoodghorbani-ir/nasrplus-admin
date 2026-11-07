@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { adminsApi } from '@/api';
-import { useNotificationStore, useAuthStore } from '@/stores';
+import { useNotificationStore, useAuthStore, useLookupsStore } from '@/stores';
 import type { AdminUser, Permission, CreateAdminInput, UpdateAdminInput, AdminType } from '@/types';
 import {
   ShieldCheck,
@@ -14,6 +14,9 @@ import {
   Search,
   Edit,
   Trash2,
+  History,
+  Layers,
+  AlertCircle,
 } from 'lucide-vue-next';
 import {
   Button,
@@ -25,21 +28,26 @@ import {
   ConfirmDialog,
   EmptyState,
   Skeleton,
+  TableActions,
+  type ActionItem,
 } from '@/components/ui';
 import { formatPersianDate } from '@/utils/formatters';
 import { extractErrorMessage } from '@/utils/errors';
+import LoginLogsView from './LoginLogsView.vue';
 
 const router = useRouter();
 const notificationStore = useNotificationStore();
 const authStore = useAuthStore();
+const lookupsStore = useLookupsStore();
 
-const activeTab = ref<'admins' | 'permissions'>('admins');
+const activeTab = ref<'admins' | 'permissions' | 'logs'>('admins');
 const adminsList = ref<AdminUser[]>([]);
 const permissionsList = ref<Permission[]>([]);
 const isLoadingAdmins = ref(false);
 const isLoadingPerms = ref(false);
 
 const adminSearch = ref('');
+const adminRoleFilter = ref<string>('');
 const adminDateFrom = ref('');
 const adminDateTo = ref('');
 
@@ -52,6 +60,9 @@ const displayedAdmins = computed(() => {
         (a.fullName && a.fullName.toLowerCase().includes(q)) ||
         (a.username && a.username.toLowerCase().includes(q))
     );
+  }
+  if (adminRoleFilter.value) {
+    list = list.filter((a) => a.type === adminRoleFilter.value);
   }
   if (adminDateFrom.value) {
     const from = new Date(adminDateFrom.value);
@@ -80,6 +91,8 @@ const newAdminPassword = ref('');
 const newAdminFullName = ref('');
 const newAdminType = ref<AdminType>('ADMIN');
 const selectedPermissions = ref<string[]>([]);
+const selectedSpecializations = ref<string[]>([]);
+const newAdminIsActive = ref(true);
 
 // Edit Admin modal
 const isEditAdminModalOpen = ref(false);
@@ -88,8 +101,19 @@ const editingAdminId = ref<string | null>(null);
 const editAdminFullName = ref('');
 const editAdminUsername = ref('');
 const editAdminPassword = ref('');
+const editAdminType = ref<AdminType>('ADMIN');
 const editAdminIsActive = ref<'true' | 'false'>('true');
-const editSelectedPermissions = ref<string[]>([]);
+const editSelectedSpecializations = ref<string[]>([]);
+
+// Standalone Permissions Modal
+const isPermissionsModalOpen = ref(false);
+const isSavingPermissions = ref(false);
+const adminForPermissions = ref<AdminUser | null>(null);
+const managingPermissionIds = ref<string[]>([]);
+
+// Standalone Login Logs Modal
+const isUserLogsModalOpen = ref(false);
+const selectedAdminForLogs = ref<AdminUser | null>(null);
 
 // Delete Admin dialog
 const isDeleteModalOpen = ref(false);
@@ -103,6 +127,18 @@ const permName = ref('');
 const permKey = ref('');
 const permModule = ref('');
 const permDesc = ref('');
+
+const roleOptions = [
+  { label: 'مدیر سامانه (ADMIN)', value: 'ADMIN' },
+  { label: 'کارشناس بررسی پرونده‌ها (EXPERT)', value: 'EXPERT' },
+];
+
+const filterRoleOptions = [
+  { label: 'همه نقش‌ها', value: '' },
+  { label: 'مدیر ارشد (SUPERADMIN)', value: 'SUPERADMIN' },
+  { label: 'مدیر سامانه (ADMIN)', value: 'ADMIN' },
+  { label: 'کارشناس بررسی (EXPERT)', value: 'EXPERT' },
+];
 
 async function loadAdmins() {
   isLoadingAdmins.value = true;
@@ -138,6 +174,8 @@ function openCreateAdminModal() {
   newAdminFullName.value = '';
   newAdminType.value = 'ADMIN';
   selectedPermissions.value = [];
+  selectedSpecializations.value = [];
+  newAdminIsActive.value = true;
   isCreateAdminModalOpen.value = true;
 }
 
@@ -150,60 +188,105 @@ function togglePermission(key: string) {
   }
 }
 
+function toggleSpecialization(id: string) {
+  const idx = selectedSpecializations.value.indexOf(id);
+  if (idx !== -1) {
+    selectedSpecializations.value.splice(idx, 1);
+  } else {
+    selectedSpecializations.value.push(id);
+  }
+}
+
+function toggleEditSpecialization(id: string) {
+  const idx = editSelectedSpecializations.value.indexOf(id);
+  if (idx !== -1) {
+    editSelectedSpecializations.value.splice(idx, 1);
+  } else {
+    editSelectedSpecializations.value.push(id);
+  }
+}
+
+function toggleManagingPermission(id: string) {
+  const idx = managingPermissionIds.value.indexOf(id);
+  if (idx !== -1) {
+    managingPermissionIds.value.splice(idx, 1);
+  } else {
+    managingPermissionIds.value.push(id);
+  }
+}
+
 async function handleCreateAdmin() {
   if (!newAdminUsername.value.trim() || !newAdminPassword.value.trim()) {
     notificationStore.warning('نام کاربری و کلمه عبور الزامی است.');
     return;
   }
 
+  if (newAdminPassword.value.trim().length < 6) {
+    notificationStore.warning('رمز عبور باید حداقل ۶ کاراکتر باشد.');
+    return;
+  }
+
+  if (newAdminType.value === 'EXPERT') {
+    if (!selectedSpecializations.value || selectedSpecializations.value.length === 0) {
+      notificationStore.warning('انتخاب حداقل یک رسته تخصصی برای کارشناس الزامی است.');
+      return;
+    }
+  }
+
   isSubmittingAdmin.value = true;
   try {
+    const cleanSpecializations = selectedSpecializations.value
+      .map((s) => String(s).trim())
+      .filter((s) => /^[0-9a-fA-F]{24}$/.test(s));
+
+    const cleanPermissions = selectedPermissions.value
+      .map((p) => String(p).trim())
+      .filter((p) => /^[0-9a-fA-F]{24}$/.test(p));
+
     const payload: CreateAdminInput = {
       username: newAdminUsername.value.trim(),
       password: newAdminPassword.value.trim(),
       fullName: newAdminFullName.value.trim() || undefined,
       type: newAdminType.value,
-      permissions: newAdminType.value === 'SUPERADMIN' ? [] : selectedPermissions.value,
+      isActive: Boolean(newAdminIsActive.value),
+      permissions: newAdminType.value === 'ADMIN' ? cleanPermissions : [],
+      reviewableSpecializations: newAdminType.value === 'EXPERT' ? cleanSpecializations : [],
     };
 
     const res = await adminsApi.createAdmin(payload);
     if (res.success) {
-      notificationStore.success('حساب مدیر جدید با موفقیت ایجاد شد.');
+      notificationStore.success(
+        newAdminType.value === 'EXPERT'
+          ? 'حساب کارشناس جدید با موفقیت ایجاد و رسته‌های تخصصی انتساب یافت.'
+          : 'حساب مدیر جدید با موفقیت ایجاد شد.'
+      );
       isCreateAdminModalOpen.value = false;
       loadAdmins();
     }
   } catch (err) {
-    notificationStore.error(extractErrorMessage(err, 'خطا در ایجاد حساب مدیر'));
+    notificationStore.error(extractErrorMessage(err, 'خطا در ایجاد حساب کاربر'));
   } finally {
     isSubmittingAdmin.value = false;
   }
 }
 
 function openEditAdminModal(admin: AdminUser) {
-  editingAdminId.value = admin._id || admin.id;
+  editingAdminId.value = admin._id || admin.id || null;
   editAdminFullName.value = admin.fullName || '';
   editAdminUsername.value = admin.username || '';
   editAdminPassword.value = '';
+  editAdminType.value = admin.type;
   editAdminIsActive.value = admin.isActive !== false ? 'true' : 'false';
 
-  if (Array.isArray(admin.permissions)) {
-    editSelectedPermissions.value = admin.permissions
-      .map((p: any) => (typeof p === 'object' && p !== null ? (p._id || p.id || '') : String(p)))
-      .filter(Boolean);
+  if (admin.type === 'EXPERT' && Array.isArray(admin.reviewableSpecializations)) {
+    editSelectedSpecializations.value = admin.reviewableSpecializations
+      .map((s: any) => (typeof s === 'object' && s !== null ? (s._id || s.id || '') : String(s)))
+      .filter((s) => Boolean(s) && /^[0-9a-fA-F]{24}$/.test(String(s).trim()));
   } else {
-    editSelectedPermissions.value = [];
+    editSelectedSpecializations.value = [];
   }
 
   isEditAdminModalOpen.value = true;
-}
-
-function toggleEditPermission(id: string) {
-  const idx = editSelectedPermissions.value.indexOf(id);
-  if (idx !== -1) {
-    editSelectedPermissions.value.splice(idx, 1);
-  } else {
-    editSelectedPermissions.value.push(id);
-  }
 }
 
 async function handleUpdateAdmin() {
@@ -214,13 +297,30 @@ async function handleUpdateAdmin() {
     return;
   }
 
+  if (editAdminType.value === 'EXPERT') {
+    if (!editSelectedSpecializations.value || editSelectedSpecializations.value.length === 0) {
+      notificationStore.warning('انتخاب حداقل یک رسته تخصصی برای کارشناس الزامی است.');
+      return;
+    }
+  }
+
+  if (editAdminPassword.value.trim() && editAdminPassword.value.trim().length < 6) {
+    notificationStore.warning('رمز عبور جدید باید حداقل ۶ کاراکتر باشد.');
+    return;
+  }
+
   isSubmittingEditAdmin.value = true;
   try {
+    const cleanSpecializations = editSelectedSpecializations.value
+      .map((s) => String(s).trim())
+      .filter((s) => /^[0-9a-fA-F]{24}$/.test(s));
+
     const payload: UpdateAdminInput = {
       username: editAdminUsername.value.trim(),
       fullName: editAdminFullName.value.trim() || undefined,
+      type: editAdminType.value,
       isActive: editAdminIsActive.value === 'true',
-      permissions: editSelectedPermissions.value,
+      reviewableSpecializations: editAdminType.value === 'EXPERT' ? cleanSpecializations : [],
     };
 
     if (editAdminPassword.value.trim()) {
@@ -229,7 +329,7 @@ async function handleUpdateAdmin() {
 
     const res = await adminsApi.updateAdmin(editingAdminId.value, payload);
     if (res.success) {
-      notificationStore.success('حساب مدیر با موفقیت به‌روزرسانی شد.');
+      notificationStore.success('مشخصات حساب کاربری با موفقیت به‌روزرسانی شد.');
       isEditAdminModalOpen.value = false;
       await loadAdmins();
 
@@ -238,15 +338,60 @@ async function handleUpdateAdmin() {
       }
     }
   } catch (err) {
-    notificationStore.error(extractErrorMessage(err, 'خطا در ویرایش حساب مدیر'));
+    notificationStore.error(extractErrorMessage(err, 'خطا در ویرایش حساب کاربر'));
   } finally {
     isSubmittingEditAdmin.value = false;
   }
 }
 
+// Open Permissions Modal for Admin
+function openPermissionsModal(admin: AdminUser) {
+  adminForPermissions.value = admin;
+  if (Array.isArray(admin.permissions)) {
+    managingPermissionIds.value = admin.permissions
+      .map((p: any) => (typeof p === 'object' && p !== null ? (p._id || p.id || '') : String(p)))
+      .filter(Boolean);
+  } else {
+    managingPermissionIds.value = [];
+  }
+  isPermissionsModalOpen.value = true;
+}
+
+async function handleSavePermissions() {
+  if (!adminForPermissions.value) return;
+  const adminId = adminForPermissions.value._id || adminForPermissions.value.id;
+  if (!adminId) return;
+
+  isSavingPermissions.value = true;
+  try {
+    const res = await adminsApi.assignPermissions(adminId, {
+      permissionIds: managingPermissionIds.value,
+    });
+    if (res.success) {
+      notificationStore.success('مجوزهای دسترسی این مدیر با موفقیت ذخیره گردید.');
+      isPermissionsModalOpen.value = false;
+      await loadAdmins();
+
+      if (adminId === authStore.user?.id || adminId === authStore.user?._id) {
+        authStore.fetchProfile();
+      }
+    }
+  } catch (err) {
+    notificationStore.error(extractErrorMessage(err, 'خطا در ثبت مجوزهای مدیر'));
+  } finally {
+    isSavingPermissions.value = false;
+  }
+}
+
+// Open Login Logs Modal
+function openUserLogsModal(admin: AdminUser) {
+  selectedAdminForLogs.value = admin;
+  isUserLogsModalOpen.value = true;
+}
+
 function promptDeleteAdmin(admin: AdminUser) {
   if (admin.type === 'SUPERADMIN') {
-    notificationStore.warning('امکان حذف حساب مدیر ارشد (Superadmin) وجود ندارد.');
+    notificationStore.warning('امکان حذف حساب مدیر ارشد سامانه (Superadmin) وجود ندارد.');
     return;
   }
   adminToDelete.value = admin;
@@ -262,16 +407,45 @@ async function handleDeleteAdmin() {
   try {
     const res = await adminsApi.deleteAdmin(adminId);
     if (res.success) {
-      notificationStore.success('حساب مدیر با موفقیت حذف گردید.');
+      notificationStore.success('حساب کاربر با موفقیت حذف گردید.');
       isDeleteModalOpen.value = false;
       adminToDelete.value = null;
       await loadAdmins();
     }
-  } catch (err) {
-    notificationStore.error(extractErrorMessage(err, 'خطا در حذف حساب مدیر'));
+  } catch (err: any) {
+    // Contract section 4: Referential integrity check
+    const message = extractErrorMessage(
+      err,
+      'این حساب کاربری دارای سابقه لاگ ورود یا عملیات کارشناسی در سامانه است و امکان حذف آن وجود ندارد. پیشنهاد می‌شود به جای حذف، حساب را غیرفعال فرمایید.'
+    );
+    notificationStore.error(message);
   } finally {
     isDeletingAdmin.value = false;
   }
+}
+
+function getAdminActionItems(admin: AdminUser): ActionItem[] {
+  const items: ActionItem[] = [];
+  if (admin.type === 'ADMIN') {
+    items.push({
+      label: 'مجوزهای دسترسی',
+      icon: Key,
+      onClick: () => openPermissionsModal(admin),
+    });
+  }
+  items.push({
+    label: 'تاریخچه ورود به سیستم',
+    icon: History,
+    onClick: () => openUserLogsModal(admin),
+  });
+  items.push({
+    label: 'حذف حساب کاربر',
+    icon: Trash2,
+    danger: true,
+    divider: true,
+    onClick: () => promptDeleteAdmin(admin),
+  });
+  return items;
 }
 
 async function handleCreatePermission() {
@@ -301,13 +475,29 @@ async function handleCreatePermission() {
   }
 }
 
-onMounted(() => {
+function getSpecializationTitles(admin: AdminUser): string[] {
+  if (!admin.reviewableSpecializations || !Array.isArray(admin.reviewableSpecializations)) {
+    return [];
+  }
+  return admin.reviewableSpecializations.map((item: any) => {
+    if (typeof item === 'object' && item !== null && item.title) {
+      return item.title;
+    }
+    const found = lookupsStore.specializations.find((s) => s._id === String(item));
+    return found?.title || String(item);
+  });
+}
+
+onMounted(async () => {
   if (!authStore.isSuperAdmin) {
     router.replace('/admin/dashboard');
     return;
   }
-  loadAdmins();
-  loadPermissions();
+  await Promise.allSettled([
+    loadAdmins(),
+    loadPermissions(),
+    lookupsStore.fetchAllLookups(),
+  ]);
 });
 </script>
 
@@ -316,11 +506,14 @@ onMounted(() => {
     <!-- Header Title & Action Buttons -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
       <div>
-        <h1 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-          مدیریت مدیران و سطوح دسترسی
+        <h1 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2">
+          <span>مدیریت مدیران و کارشناسان</span>
+          <span class="text-xs px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300 font-bold border border-brand-200 dark:border-brand-800">
+            مدیریت امنیتی
+          </span>
         </h1>
         <p class="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-          کنترل حساب‌های مدیر ارشد (Superadmin)، مدیران عادی و ماتریس مجوزهای سامانه
+          کنترل حساب‌های مدیر ارشد (Superadmin)، مدیران سامانه، کارشناسان بررسی پرونده و ره‌گیری دسترسی‌ها
         </p>
       </div>
 
@@ -342,7 +535,7 @@ onMounted(() => {
           @click="openCreateAdminModal"
         >
           <Plus class="w-4 h-4 ml-1" />
-          افزودن مدیر جدید
+          افزودن مدیر یا کارشناس جدید
         </Button>
 
         <Button
@@ -370,7 +563,7 @@ onMounted(() => {
         @click="activeTab = 'admins'"
       >
         <Users class="w-4 h-4" />
-        حساب‌های مدیران
+        حساب‌های مدیران و کارشناسان
       </button>
 
       <button
@@ -386,23 +579,43 @@ onMounted(() => {
         <Key class="w-4 h-4" />
         ماتریس مجوزهای دسترسی
       </button>
+
+      <button
+        type="button"
+        :class="[
+          'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
+          activeTab === 'logs'
+            ? 'bg-brand-600 text-white shadow-xs shadow-brand-600/30'
+            : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800',
+        ]"
+        @click="activeTab = 'logs'"
+      >
+        <History class="w-4 h-4" />
+        لاگ‌های ورود به سیستم
+      </button>
     </div>
 
-    <!-- Tab 1: Admins List Table -->
+    <!-- TAB 1: Admins and Experts List Table -->
     <div v-if="activeTab === 'admins'" class="space-y-4">
       <!-- Filter Bar for Admins -->
       <div
         class="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs space-y-3"
       >
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-center">
           <Input
             v-model="adminSearch"
-            placeholder="جستجوی نام یا نام کاربری مدیر..."
+            placeholder="جستجوی نام یا نام کاربری..."
           >
             <template #prefix>
-              <Search class="w-4 h-4" />
+              <Search class="w-4 h-4 text-slate-400" />
             </template>
           </Input>
+
+          <Select
+            v-model="adminRoleFilter"
+            :options="filterRoleOptions"
+            placeholder="فیلتر بر اساس نقش..."
+          />
 
           <DatePicker
             v-model="adminDateFrom"
@@ -425,8 +638,8 @@ onMounted(() => {
               <tr class="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold">
                 <th class="py-3.5 px-4">نام و نام خانوادگی</th>
                 <th class="py-3.5 px-4">نام کاربری / ایمیل</th>
-                <th class="py-3.5 px-4">سطح دسترسی</th>
-                <th class="py-3.5 px-4">تعداد مجوزها</th>
+                <th class="py-3.5 px-4">نوع حساب</th>
+                <th class="py-3.5 px-4">رسته‌های تخصصی قابل بررسی</th>
                 <th class="py-3.5 px-4">وضعیت</th>
                 <th class="py-3.5 px-4">تاریخ ثبت</th>
                 <th v-if="authStore.isSuperAdmin" class="py-3.5 px-4 text-center">عملیات</th>
@@ -444,10 +657,10 @@ onMounted(() => {
 
               <template v-else-if="displayedAdmins.length === 0">
                 <tr>
-                  <td :colspan="authStore.isSuperAdmin ? 7 : 6">
+                  <td :colspan="authStore.isSuperAdmin ? 7 : 6" class="py-12">
                     <EmptyState
                       title="هیچ حسابی یافت نشد"
-                      description="برای ایجاد مدیر جدید از دکمه بالا استفاده کنید."
+                      description="برای ایجاد مدیر یا کارشناس جدید از دکمه بالا استفاده کنید."
                       :icon="Shield"
                     />
                   </td>
@@ -460,14 +673,23 @@ onMounted(() => {
                 :key="admin._id || admin.id"
                 class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
               >
-                <!-- Name & Avatar -->
+                <!-- 1. Full Name & Avatar -->
                 <td class="py-3.5 px-4 font-bold text-slate-900 dark:text-slate-100">
                   <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-xl bg-brand-600 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
+                    <div
+                      :class="[
+                        'w-8 h-8 rounded-xl font-bold flex items-center justify-center text-xs shrink-0 shadow-xs text-white',
+                        admin.type === 'SUPERADMIN'
+                          ? 'bg-purple-600'
+                          : admin.type === 'EXPERT'
+                            ? 'bg-emerald-600'
+                            : 'bg-brand-600'
+                      ]"
+                    >
                       {{ admin.fullName ? admin.fullName[0] : 'م' }}
                     </div>
                     <div class="truncate">
-                      <span>{{ admin.fullName || 'کاربر مدیر' }}</span>
+                      <span>{{ admin.fullName || 'کاربر سیستم' }}</span>
                       <span v-if="admin.username === authStore.user?.username" class="mr-1.5 text-[10px] text-brand-600 dark:text-brand-400 font-bold">
                         (حساب جاری شما)
                       </span>
@@ -475,29 +697,58 @@ onMounted(() => {
                   </div>
                 </td>
 
-                <!-- Username -->
+                <!-- 2. Username -->
                 <td class="py-3.5 px-4 text-slate-600 dark:text-slate-300 font-medium font-mono text-left" dir="ltr">
                   {{ admin.username }}
                 </td>
 
-                <!-- Role / Type -->
+                <!-- 3. Role / Type Badge -->
                 <td class="py-3.5 px-4">
-                  <Badge :variant="admin.type === 'SUPERADMIN' ? 'brand' : 'default'">
-                    {{ admin.type === 'SUPERADMIN' ? 'مدیر ارشد (Superadmin)' : 'مدیر عادی (Admin)' }}
+                  <!-- SUPERADMIN: Purple / Brand -->
+                  <Badge v-if="admin.type === 'SUPERADMIN'" variant="purple">
+                    مدیر ارشد سامانه
+                  </Badge>
+                  <!-- ADMIN: Blue -->
+                  <Badge v-else-if="admin.type === 'ADMIN'" variant="blue">
+                    مدیر سامانه
+                  </Badge>
+                  <!-- EXPERT: Emerald / Green -->
+                  <Badge v-else-if="admin.type === 'EXPERT'" variant="emerald">
+                    کارشناس بررسی پرونده
                   </Badge>
                 </td>
 
-                <!-- Permissions count -->
-                <td class="py-3.5 px-4 text-slate-600 dark:text-slate-400">
-                  <span v-if="admin.type === 'SUPERADMIN'" class="text-emerald-600 dark:text-emerald-400 font-bold">
-                    دسترسی کامل (نامحدود)
-                  </span>
-                  <span v-else>
-                    {{ Array.isArray(admin.permissions) ? admin.permissions.length : 0 }} مجوز
-                  </span>
+                <!-- 4. Assigned Specializations (رسته‌های تخصصی قابل بررسی) -->
+                <td class="py-3.5 px-4">
+                  <!-- For EXPERT: display badge tags -->
+                  <div v-if="admin.type === 'EXPERT'" class="flex flex-wrap gap-1 max-w-xs">
+                    <template v-if="getSpecializationTitles(admin).length > 0">
+                      <span
+                        v-for="(title, idx) in getSpecializationTitles(admin)"
+                        :key="idx"
+                        class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800"
+                      >
+                        {{ title }}
+                      </span>
+                    </template>
+                    <span v-else class="text-rose-500 font-bold text-[11px] flex items-center gap-1">
+                      <AlertCircle class="w-3.5 h-3.5" />
+                      فاقد رسته انتسابی!
+                    </span>
+                  </div>
+
+                  <!-- For SUPERADMIN and ADMIN: General unrestricted access -->
+                  <div v-else class="text-slate-400 text-xs">
+                    <span v-if="admin.type === 'SUPERADMIN'" class="text-purple-600 dark:text-purple-400 font-bold">
+                      تمام رسته‌ها (دسترسی عمومی)
+                    </span>
+                    <span v-else class="text-slate-500 dark:text-slate-400">
+                      —
+                    </span>
+                  </div>
                 </td>
 
-                <!-- Status -->
+                <!-- 5. Status Toggle / Badge -->
                 <td class="py-3.5 px-4">
                   <span
                     v-if="admin.isActive !== false"
@@ -515,46 +766,43 @@ onMounted(() => {
                   </span>
                 </td>
 
-                <!-- Created At -->
-                <td class="py-3.5 px-4 text-slate-500 dark:text-slate-400">
+                <!-- 6. Created At -->
+                <td class="py-3.5 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                   {{ formatPersianDate(admin.createdAt) }}
                 </td>
 
-                <!-- Actions (Superadmin Only) -->
-                <td v-if="authStore.isSuperAdmin" class="py-3.5 px-4 text-center">
-                  <!-- For Regular Admins: Edit and Delete buttons -->
-                  <div v-if="admin.type !== 'SUPERADMIN'" class="flex items-center justify-center gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      class="text-xs h-7.5 px-2.5 font-medium hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400"
-                      title="ویرایش حساب مدیر"
-                      @click="openEditAdminModal(admin)"
-                    >
-                      <Edit class="w-3.5 h-3.5 ml-1 text-slate-500 dark:text-slate-400" />
-                      ویرایش
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      class="text-xs h-7.5 px-2.5 font-medium"
-                      title="حذف حساب مدیر"
-                      @click="promptDeleteAdmin(admin)"
-                    >
-                      <Trash2 class="w-3.5 h-3.5 ml-1" />
-                      حذف
-                    </Button>
+                <!-- 7. Actions (Superadmin Only) -->
+                <td v-if="authStore.isSuperAdmin" class="py-3.5 px-4 text-center whitespace-nowrap">
+                  <!-- For Regular Admins & Experts -->
+                  <div v-if="admin.type !== 'SUPERADMIN'" class="flex items-center justify-center">
+                    <TableActions
+                      primary-label="ویرایش"
+                      :primary-icon="Edit"
+                      primary-title="ویرایش مشخصات"
+                      primary-variant="outline"
+                      @primary="openEditAdminModal(admin)"
+                      :items="getAdminActionItems(admin)"
+                    />
                   </div>
 
                   <!-- For Superadmin: Non-editable indicator -->
-                  <span
-                    v-else
-                    class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 dark:text-slate-500 select-none py-1"
-                    title="حساب مدیر ارشد غیرقابل ویرایش یا حذف است"
-                  >
-                    <ShieldCheck class="w-3.5 h-3.5 text-brand-500/70" />
-                    غیرقابل تغییر
-                  </span>
+                  <div v-else class="flex items-center justify-center gap-1.5">
+                    <TableActions
+                      primary-label="لاگ‌ها"
+                      :primary-icon="History"
+                      primary-title="مشاهده تاریخچه ورود مدیر ارشد"
+                      primary-variant="outline"
+                      @primary="openUserLogsModal(admin)"
+                    />
+
+                    <span
+                      class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 dark:text-slate-500 select-none py-1 px-2 rounded-lg bg-slate-100 dark:bg-slate-800"
+                      title="حساب مدیر ارشد سامانه غیرقابل ویرایش یا حذف است"
+                    >
+                      <ShieldCheck class="w-3.5 h-3.5 text-purple-500" />
+                      حفاظت‌شده
+                    </span>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -563,9 +811,9 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Tab 2: Permissions Matrix -->
+    <!-- TAB 2: Permissions Matrix -->
     <div
-      v-else
+      v-else-if="activeTab === 'permissions'"
       class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-xs overflow-hidden"
     >
       <div class="overflow-x-auto">
@@ -620,11 +868,18 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Create Admin Modal -->
+    <!-- TAB 3: System-wide Login Audit Logs -->
+    <div v-else-if="activeTab === 'logs'">
+      <LoginLogsView :embedded="true" />
+    </div>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- 1. Create Admin / Expert Modal -->
     <Modal
       :open="isCreateAdminModalOpen"
-      title="ایجاد حساب کاربری مدیر جدید"
-      subtitle="تعیین شناسه، نوع کاربری و مجوزهای دسترسی"
+      title="افزودن حساب کاربری جدید"
+      subtitle="تعیین نقش (مدیر سامانه یا کارشناس بررسی پرونده) و انتساب دسترسی‌ها"
       size="xl"
       @close="isCreateAdminModalOpen = false"
     >
@@ -633,23 +888,20 @@ onMounted(() => {
           <Input
             v-model="newAdminFullName"
             label="نام و نام خانوادگی"
-            placeholder="نام و نام خانوادگی را وارد نمایید"
+            placeholder="مثال: مهندس رضایی"
           />
 
           <Select
             v-model="newAdminType"
-            label="سطح حساب"
-            :options="[
-              { label: 'مدیر عادی (ADMIN)', value: 'ADMIN' },
-              { label: 'مدیر ارشد (SUPERADMIN)', value: 'SUPERADMIN' },
-            ]"
+            label="نقش حساب کاربری"
+            :options="roleOptions"
             required
           />
 
           <Input
             v-model="newAdminUsername"
             label="نام کاربری / ایمیل"
-            placeholder="نام کاربری یا ایمیل را وارد نمایید"
+            placeholder="مثال: expert_software@nasrplus.ir"
             dir="ltr"
             required
           />
@@ -657,15 +909,85 @@ onMounted(() => {
           <Input
             v-model="newAdminPassword"
             type="password"
-            label="رمز عبور"
-            placeholder="رمز عبور را وارد نمایید"
+            label="کلمه عبور (حداقل ۶ کاراکتر)"
+            placeholder="کلمه عبور امن را وارد نمایید"
             dir="ltr"
             required
           />
         </div>
 
+        <!-- CONDITIONAL FIELD: Reviewable Specializations (ONLY FOR EXPERT) -->
+        <div
+          v-if="newAdminType === 'EXPERT'"
+          class="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/80 space-y-3 transition-all"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 text-emerald-900 dark:text-emerald-200">
+              <Layers class="w-4 h-4 text-emerald-600 shrink-0" />
+              <div>
+                <span class="text-xs font-bold block">
+                  رسته‌های تخصصی قابل بررسی: (الزامی)
+                  <span class="text-rose-500 mr-1">*</span>
+                </span>
+                <span class="text-[11px] text-emerald-700/80 dark:text-emerald-400">
+                  کارشناس صرفاً مجاز به بررسی و ممیزی پرونده‌های مربوط به این رسته‌ها خواهد بود.
+                </span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="text-[11px] text-emerald-700 dark:text-emerald-300 hover:underline cursor-pointer font-bold"
+                @click="selectedSpecializations = lookupsStore.specializations.map((s) => s._id)"
+              >
+                انتخاب همه
+              </button>
+              <span class="text-emerald-300 dark:text-emerald-700">&bull;</span>
+              <button
+                type="button"
+                class="text-[11px] text-slate-500 hover:underline cursor-pointer font-medium"
+                @click="selectedSpecializations = []"
+              >
+                لغو همه
+              </button>
+            </div>
+          </div>
+
+          <!-- Specializations Selection Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto p-1">
+            <div
+              v-for="spec in lookupsStore.specializations"
+              :key="spec._id"
+              :class="[
+                'p-2.5 rounded-xl border flex items-center justify-between cursor-pointer text-xs transition-colors',
+                selectedSpecializations.includes(spec._id)
+                  ? 'border-emerald-500 bg-white dark:bg-emerald-900/40 text-emerald-950 dark:text-emerald-100 font-bold shadow-xs'
+                  : 'border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 hover:bg-white text-slate-700 dark:text-slate-300',
+              ]"
+              @click="toggleSpecialization(spec._id)"
+            >
+              <div class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  :checked="selectedSpecializations.includes(spec._id)"
+                  class="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 pointer-events-none"
+                />
+                <span>{{ spec.title }}</span>
+              </div>
+              <span v-if="spec.code" class="text-[10px] text-slate-400 font-mono" dir="ltr">
+                {{ spec.code }}
+              </span>
+            </div>
+          </div>
+
+          <p v-if="selectedSpecializations.length === 0" class="text-[11px] text-rose-500 font-bold">
+            ⚠ انتخاب حداقل یک رسته تخصصی برای ثبت حساب کارشناس الزامی است.
+          </p>
+        </div>
+
         <!-- Permissions selector if ADMIN -->
-        <div v-if="newAdminType === 'ADMIN'" class="pt-3 border-t border-slate-100 dark:border-slate-800">
+        <div v-else-if="newAdminType === 'ADMIN'" class="pt-3 border-t border-slate-100 dark:border-slate-800">
           <div class="flex items-center justify-between mb-2">
             <label class="block text-xs font-bold text-slate-800 dark:text-slate-200">
               انتخاب مجوزهای دسترسی این مدیر ({{ selectedPermissions.length }} مجوز انتخاب شده):
@@ -696,7 +1018,7 @@ onMounted(() => {
               :class="[
                 'p-2.5 rounded-xl border flex items-center justify-between cursor-pointer text-xs transition-colors',
                 selectedPermissions.includes(perm._id)
-                  ? 'border-brand-500 bg-brand-50/60 dark:bg-brand-950/40 text-brand-900 dark:text-brand-100'
+                  ? 'border-brand-500 bg-brand-50/60 dark:bg-brand-950/40 text-brand-900 dark:text-brand-100 font-bold'
                   : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300',
               ]"
               @click="togglePermission(perm._id)"
@@ -713,6 +1035,19 @@ onMounted(() => {
             </div>
           </div>
         </div>
+
+        <!-- Account Status Toggle -->
+        <div class="pt-2 flex items-center gap-2">
+          <input
+            id="newAdminActive"
+            v-model="newAdminIsActive"
+            type="checkbox"
+            class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer"
+          />
+          <label for="newAdminActive" class="text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
+            حساب کاربری فعال باشد
+          </label>
+        </div>
       </form>
 
       <template #footer>
@@ -720,16 +1055,16 @@ onMounted(() => {
           انصراف
         </Button>
         <Button variant="primary" size="md" :loading="isSubmittingAdmin" @click="handleCreateAdmin">
-          ایجاد حساب مدیر
+          ذخیره اطلاعات
         </Button>
       </template>
     </Modal>
 
-    <!-- Edit Admin Modal -->
+    <!-- 2. Edit Admin / Expert Modal -->
     <Modal
       :open="isEditAdminModalOpen"
-      title="ویرایش حساب کاربری مدیر"
-      subtitle="ویرایش مشخصات فردی، وضعیت و مجوزهای دسترسی"
+      title="ویرایش حساب کاربری"
+      subtitle="ویرایش مشخصات فردی، نقش کاربری و رسته‌های تخصصی انتسابی"
       size="xl"
       @close="isEditAdminModalOpen = false"
     >
@@ -742,12 +1077,9 @@ onMounted(() => {
           />
 
           <Select
-            v-model="editAdminIsActive"
-            label="وضعیت حساب"
-            :options="[
-              { label: 'فعال', value: 'true' },
-              { label: 'غیرفعال', value: 'false' },
-            ]"
+            v-model="editAdminType"
+            label="نقش حساب کاربری"
+            :options="roleOptions"
             required
           />
 
@@ -759,64 +1091,95 @@ onMounted(() => {
             required
           />
 
-          <Input
-            v-model="editAdminPassword"
-            type="password"
-            label="رمز عبور جدید (اختیاری)"
-            placeholder="در صورت عدم تمایل به تغییر، خالی بگذارید"
-            hint="تنها در صورتی که می‌خواهید رمز را تغییر دهید پر کنید."
-            dir="ltr"
+          <Select
+            v-model="editAdminIsActive"
+            label="وضعیت حساب"
+            :options="[
+              { label: 'فعال', value: 'true' },
+              { label: 'غیرفعال', value: 'false' },
+            ]"
+            required
           />
+
+          <div class="sm:col-span-2">
+            <Input
+              v-model="editAdminPassword"
+              type="password"
+              label="کلمه عبور جدید (اختیاری)"
+              placeholder="در صورت عدم تمایل به تغییر، این فیلد را خالی بگذارید"
+              hint="تنها در صورتی که مایل به تغییر رمز عبور کاربر هستید پر نمایید (حداقل ۶ کاراکتر)."
+              dir="ltr"
+            />
+          </div>
         </div>
 
-        <!-- Permissions selector for edited Admin -->
-        <div class="pt-3 border-t border-slate-100 dark:border-slate-800">
-          <div class="flex items-center justify-between mb-2">
-            <label class="block text-xs font-bold text-slate-800 dark:text-slate-200">
-              انتخاب مجوزهای دسترسی این مدیر ({{ editSelectedPermissions.length }} مجوز انتخاب شده):
-            </label>
+        <!-- CONDITIONAL FIELD: Reviewable Specializations (ONLY FOR EXPERT) -->
+        <div
+          v-if="editAdminType === 'EXPERT'"
+          class="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/80 space-y-3 transition-all"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 text-emerald-900 dark:text-emerald-200">
+              <Layers class="w-4 h-4 text-emerald-600 shrink-0" />
+              <div>
+                <span class="text-xs font-bold block">
+                  رسته‌های تخصصی قابل بررسی: (الزامی)
+                  <span class="text-rose-500 mr-1">*</span>
+                </span>
+                <span class="text-[11px] text-emerald-700/80 dark:text-emerald-400">
+                  کارشناس صرفاً مجاز به بررسی پرونده‌ها و مهارت‌های این رسته‌ها خواهد بود.
+                </span>
+              </div>
+            </div>
+
             <div class="flex items-center gap-2">
               <button
                 type="button"
-                class="text-[11px] text-brand-600 dark:text-brand-400 hover:underline cursor-pointer font-medium"
-                @click="editSelectedPermissions = permissionsList.map((p) => p._id)"
+                class="text-[11px] text-emerald-700 dark:text-emerald-300 hover:underline cursor-pointer font-bold"
+                @click="editSelectedSpecializations = lookupsStore.specializations.map((s) => s._id)"
               >
                 انتخاب همه
               </button>
-              <span class="text-slate-300 dark:text-slate-700">&bull;</span>
+              <span class="text-emerald-300 dark:text-emerald-700">&bull;</span>
               <button
                 type="button"
                 class="text-[11px] text-slate-500 hover:underline cursor-pointer font-medium"
-                @click="editSelectedPermissions = []"
+                @click="editSelectedSpecializations = []"
               >
                 لغو همه
               </button>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto p-1">
             <div
-              v-for="perm in permissionsList"
-              :key="perm._id"
+              v-for="spec in lookupsStore.specializations"
+              :key="spec._id"
               :class="[
                 'p-2.5 rounded-xl border flex items-center justify-between cursor-pointer text-xs transition-colors',
-                editSelectedPermissions.includes(perm._id)
-                  ? 'border-brand-500 bg-brand-50/60 dark:bg-brand-950/40 text-brand-900 dark:text-brand-100'
-                  : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300',
+                editSelectedSpecializations.includes(spec._id)
+                  ? 'border-emerald-500 bg-white dark:bg-emerald-900/40 text-emerald-950 dark:text-emerald-100 font-bold shadow-xs'
+                  : 'border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 hover:bg-white text-slate-700 dark:text-slate-300',
               ]"
-              @click="toggleEditPermission(perm._id)"
+              @click="toggleEditSpecialization(spec._id)"
             >
-              <div>
-                <span class="font-bold block">{{ perm.name }}</span>
-                <span class="text-[10px] text-slate-400" dir="ltr">{{ perm.key }}</span>
+              <div class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  :checked="editSelectedSpecializations.includes(spec._id)"
+                  class="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 pointer-events-none"
+                />
+                <span>{{ spec.title }}</span>
               </div>
-              <input
-                type="checkbox"
-                :checked="editSelectedPermissions.includes(perm._id)"
-                class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4 pointer-events-none"
-              />
+              <span v-if="spec.code" class="text-[10px] text-slate-400 font-mono" dir="ltr">
+                {{ spec.code }}
+              </span>
             </div>
           </div>
+
+          <p v-if="editSelectedSpecializations.length === 0" class="text-[11px] text-rose-500 font-bold">
+            ⚠ انتخاب حداقل یک رسته تخصصی برای کارشناس الزامی است.
+          </p>
         </div>
       </form>
 
@@ -840,11 +1203,104 @@ onMounted(() => {
       </template>
     </Modal>
 
-    <!-- Delete Admin Confirmation Dialog -->
+    <!-- 3. Assign Permissions Modal (for ADMIN role) -->
+    <Modal
+      :open="isPermissionsModalOpen"
+      :title="`مدیریت مجوزهای دسترسی: ${adminForPermissions?.fullName || adminForPermissions?.username || ''}`"
+      subtitle="تعیین دسترسی‌های ریزدانه‌ای ماژول‌ها برای این مدیر"
+      size="xl"
+      @close="isPermissionsModalOpen = false"
+    >
+      <div class="space-y-4 text-right">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+          <span class="text-xs font-bold text-slate-800 dark:text-slate-200">
+            تعداد مجوزهای انتخاب‌شده: <strong class="text-brand-600">{{ managingPermissionIds.length }}</strong>
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="text-xs text-brand-600 dark:text-brand-400 hover:underline cursor-pointer font-bold"
+              @click="managingPermissionIds = permissionsList.map((p) => p._id)"
+            >
+              انتخاب همه
+            </button>
+            <span class="text-slate-300 dark:text-slate-700">&bull;</span>
+            <button
+              type="button"
+              class="text-xs text-slate-500 hover:underline cursor-pointer font-medium"
+              @click="managingPermissionIds = []"
+            >
+              لغو همه
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-96 overflow-y-auto p-1">
+          <div
+            v-for="perm in permissionsList"
+            :key="perm._id"
+            :class="[
+              'p-3 rounded-xl border flex items-center justify-between cursor-pointer text-xs transition-colors',
+              managingPermissionIds.includes(perm._id)
+                ? 'border-brand-500 bg-brand-50/60 dark:bg-brand-950/40 text-brand-900 dark:text-brand-100 font-bold shadow-xs'
+                : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300',
+            ]"
+            @click="toggleManagingPermission(perm._id)"
+          >
+            <div>
+              <span class="font-bold block">{{ perm.name }}</span>
+              <span class="text-[10px] text-slate-400 font-mono" dir="ltr">{{ perm.key }}</span>
+              <span v-if="perm.description" class="text-[10px] text-slate-500 block mt-0.5">
+                {{ perm.description }}
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              :checked="managingPermissionIds.includes(perm._id)"
+              class="rounded text-brand-600 focus:ring-brand-500 w-4 h-4 pointer-events-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <Button variant="outline" size="md" :disabled="isSavingPermissions" @click="isPermissionsModalOpen = false">
+          انصراف
+        </Button>
+        <Button variant="primary" size="md" :loading="isSavingPermissions" @click="handleSavePermissions">
+          ذخیره دسترسی‌ها
+        </Button>
+      </template>
+    </Modal>
+
+    <!-- 4. User Login History Modal -->
+    <Modal
+      :open="isUserLogsModalOpen"
+      :title="`تاریخچه لاگ‌های ورود: ${selectedAdminForLogs?.fullName || selectedAdminForLogs?.username || ''}`"
+      subtitle="ره‌گیری امنیتی نشست‌ها و تلاش‌های ورود این کاربر"
+      size="2xl"
+      @close="isUserLogsModalOpen = false"
+    >
+      <div v-if="selectedAdminForLogs" class="space-y-4">
+        <LoginLogsView
+          :embedded="true"
+          :filter-admin-id="selectedAdminForLogs._id || selectedAdminForLogs.id"
+          :filter-username="selectedAdminForLogs.username"
+        />
+      </div>
+
+      <template #footer>
+        <Button variant="outline" size="md" @click="isUserLogsModalOpen = false">
+          بستن پنجره
+        </Button>
+      </template>
+    </Modal>
+
+    <!-- 5. Delete Admin Confirmation Dialog -->
     <ConfirmDialog
       :open="isDeleteModalOpen"
-      title="حذف حساب کاربری مدیر"
-      :description="adminToDelete ? `آیا از حذف حساب کاربری «${adminToDelete.fullName || adminToDelete.username}» اطمینان دارید؟ دسترسی این کاربر به سامانه به‌طور کامل لغو خواهد شد و این عملیات قابل بازگشت نیست.` : ''"
+      title="حذف حساب کاربری مدیر یا کارشناس"
+      :description="adminToDelete ? `آیا از حذف حساب کاربری «${adminToDelete.fullName || adminToDelete.username}» اطمینان دارید؟ در صورت داشتن سوابق لاگ یا عملیات کارشناسی، سیستم به جهت حفظ زنجیره ره‌گیری امنیتی از حذف ممانعت خواهد کرد.` : ''"
       confirm-text="حذف قطعی حساب"
       cancel-text="انصراف"
       variant="danger"
@@ -853,7 +1309,7 @@ onMounted(() => {
       @cancel="isDeleteModalOpen = false"
     />
 
-    <!-- Create Permission Modal -->
+    <!-- 6. Create Permission Modal -->
     <Modal
       :open="isCreatePermModalOpen"
       title="ثبت مجوز جدید در سیستم"
@@ -865,14 +1321,14 @@ onMounted(() => {
         <Input
           v-model="permName"
           label="عنوان فارسی مجوز"
-          placeholder="عنوان فارسی مجوز را وارد نمایید"
+          placeholder="مثال: مشاهده فهرست اعضا"
           required
         />
 
         <Input
           v-model="permKey"
           label="کلید انگلیسی دسترسی (Key)"
-          placeholder="شناسه کلید دسترسی (انگلیسی)"
+          placeholder="مثال: members:read"
           dir="ltr"
           required
         />
@@ -880,14 +1336,14 @@ onMounted(() => {
         <Input
           v-model="permModule"
           label="نام ماژول"
-          placeholder="نام ماژول مربوطه"
+          placeholder="مثال: members"
           dir="ltr"
         />
 
         <Input
           v-model="permDesc"
           label="توضیحات دسترسی"
-          placeholder="توضیحات دسترسی را وارد نمایید"
+          placeholder="توضیح مختصر درباره کاربرد این دسترسی"
         />
       </form>
 

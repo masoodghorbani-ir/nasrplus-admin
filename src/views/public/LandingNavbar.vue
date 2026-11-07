@@ -7,6 +7,7 @@ import {
   Moon,
   Search,
   LogIn,
+  ShieldCheck,
 } from 'lucide-vue-next';
 
 const emit = defineEmits<{
@@ -23,6 +24,10 @@ function goToLogin() {
 function goToHome() {
   router.push('/');
 }
+
+function goToInquiry() {
+  router.push('/inquiry');
+}
 </script>
 
 <template>
@@ -38,6 +43,17 @@ function goToHome() {
 
       <!-- Left Quick Actions -->
       <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        <!-- Member Inquiry button -->
+        <button
+          type="button"
+          class="h-9 px-2.5 sm:px-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+          title="استعلام اصالت و پروانه عضویت اعضا"
+          @click="goToInquiry"
+        >
+          <ShieldCheck class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span class="hidden md:inline">استعلام اعضا</span>
+        </button>
+
         <!-- Tracking button -->
         <button
           type="button"

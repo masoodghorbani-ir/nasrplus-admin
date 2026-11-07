@@ -7,3 +7,4 @@ export * from './admins.api';
 export * from './health.api';
 export * from './public.api';
 export * from './member-portal.api';
+export * from './inquiry.api';

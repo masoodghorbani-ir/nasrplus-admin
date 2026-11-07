@@ -1,0 +1,65 @@
+---
+description: Rule for list and table action buttons and menus
+globs: src/**/*.vue
+alwaysApply: true
+---
+
+# List & Table Actions Design Rule
+
+در تمام لیست‌ها، جداول و کارت‌های داده در این پروژه، دکمه‌های عملیاتی (Actions) باید دقیقاً از قانون زیر پیروی کنند:
+
+## قانون کلیدی
+1. **دکمه اولویت‌دار (Primary Action):** همیشه دقیقاً **یک دکمه اصلی و مهم** با آیکن و عنوان مشخص در ردیف جدول یا کارت قرار می‌گیرد.
+2. **سایر عملیات در سه‌نقطه (`...` Dropdown):** تمامی عملیات و منوهای ثانویه (مانند ویرایش فرعی، لاگ‌ها، مجوزها، پرونده عضو، کپی، حذف و...) باید داخل منوی سه‌نقطه (`TableActions`) قرار گیرند.
+3. **عدم نمایش چندین دکمه کنار هم:** هرگز نباید چند دکمه مستقل (ویرایش، حذف، لاگ، مجوزها و...) به صورت متوالی و بدون سه‌نقطه در ردیف‌های لیست قرار گیرند.
+
+## نحوه استفاده از کامپوننت `TableActions`
+
+از کامپوننت مشترک `@/components/ui/TableActions.vue` استفاده شود:
+
+```vue
+<script setup lang="ts">
+import { TableActions, type ActionItem } from '@/components/ui';
+import { Edit, Key, History, Trash2 } from 'lucide-vue-next';
+
+function getRowActions(item: any): ActionItem[] {
+  return [
+    {
+      label: 'مجوزهای دسترسی',
+      icon: Key,
+      onClick: () => handlePermissions(item),
+    },
+    {
+      label: 'تاریخچه ورود و لاگ‌ها',
+      icon: History,
+      onClick: () => handleLogs(item),
+    },
+    {
+      label: 'حذف رکورد',
+      icon: Trash2,
+      danger: true,
+      divider: true,
+      onClick: () => handleDelete(item),
+    },
+  ];
+}
+</script>
+
+<template>
+  <TableActions
+    primary-label="ویرایش"
+    :primary-icon="Edit"
+    primary-title="ویرایش مشخصات"
+    primary-variant="outline"
+    @primary="handleEdit(item)"
+    :items="getRowActions(item)"
+  />
+</template>
+```
+
+## خصوصیات `TableActions`:
+- `primary-label`: عنوان دکمه اصلی اولویت‌دار
+- `primary-icon`: کامپوننت آیکن دکمه اصلی (از lucide-vue-next)
+- `primary-variant`: نوع استایل دکمه اصلی (`brand`، `outline`، `primary`، `default`)
+- `primary-disabled`: غیرفعال کردن دکمه اصلی در صورت نیاز
+- `items`: آرایه‌ای از آیتم‌های منوی سه‌نقطه با ساختار `ActionItem` (شامل `label`, `icon`, `onClick`, `danger`, `disabled`, `divider`)

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { membersApi, companiesApi } from '@/api';
-import { useLookupsStore, useNotificationStore, useDeskStore } from '@/stores';
+import { useLookupsStore, useNotificationStore, useDeskStore, useAuthStore } from '@/stores';
 import type {
   IMemberSkill,
   Member,
@@ -14,6 +14,8 @@ import {
   EmptyState,
   MemberAvatar,
   Pagination,
+  TableActions,
+  type ActionItem,
 } from '@/components/ui';
 import { toPersianDigits, formatPersianDate, formatWorkflowLogComment } from '@/utils/formatters';
 import { extractErrorMessage } from '@/utils/errors';
@@ -45,6 +47,18 @@ import {
 const lookupsStore = useLookupsStore();
 const notificationStore = useNotificationStore();
 const deskStore = useDeskStore();
+const authStore = useAuthStore();
+
+const isExpert = computed(() => authStore.user?.type === 'EXPERT');
+const expertAssignedSpecializations = computed(() => {
+  if (!isExpert.value || !authStore.user?.reviewableSpecializations) return [];
+  return authStore.user.reviewableSpecializations;
+});
+const expertAssignedIds = computed(() => {
+  return expertAssignedSpecializations.value.map((s: any) =>
+    typeof s === 'object' && s !== null ? (s._id || s.id || '') : String(s)
+  ).filter(Boolean);
+});
 
 const skillsList = ref<IMemberSkill[]>([]);
 const isLoading = ref(false);
@@ -97,9 +111,13 @@ const certFilterOptions = [
 
 // Specialization Options
 const specializationFilterOptions = computed(() => {
+  let list = lookupsStore.specializations;
+  if (isExpert.value && expertAssignedIds.value.length > 0) {
+    list = list.filter((s) => expertAssignedIds.value.includes(s._id));
+  }
   return [
-    { label: 'همه رسته‌های تخصصی', value: '' },
-    ...lookupsStore.specializations.map((s) => ({
+    { label: isExpert.value ? 'همه رسته‌های تحت بررسی شما' : 'همه رسته‌های تخصصی', value: '' },
+    ...list.map((s) => ({
       label: `${s.title}${s.code ? ` (${s.code})` : ''}`,
       value: s._id,
     })),
@@ -164,6 +182,14 @@ async function loadSkills() {
 // Client-side Filtered and Searched Skills
 const filteredSkills = computed(() => {
   let list = skillsList.value;
+
+  // Expert Scope Restriction: Automatically scope dossiers to expert's allowed specializations
+  if (isExpert.value && expertAssignedIds.value.length > 0) {
+    list = list.filter((s) => {
+      const specId = typeof s.specializationId === 'object' ? s.specializationId?._id : s.specializationId;
+      return specId && expertAssignedIds.value.includes(specId);
+    });
+  }
 
   if (selectedStatus.value) {
     list = list.filter((s) => s.verificationStatus === selectedStatus.value);
@@ -291,6 +317,34 @@ function openCertificatePreview(skill: IMemberSkill) {
   isPreviewModalOpen.value = true;
 }
 
+function getSkillDeskActionItems(skill: IMemberSkill): ActionItem[] {
+  const items: ActionItem[] = [
+    {
+      label: 'تاریخچه و لاگ گردش کار',
+      icon: History,
+      onClick: () => openTimelineModal(skill),
+    },
+    {
+      label: 'مشاهده پرونده کامل عضو',
+      icon: ExternalLink,
+      onClick: () => {
+        const memberId = resolveMember(skill)?._id;
+        if (memberId) openMemberProfile(memberId);
+      },
+    },
+  ];
+
+  if (skill.hasCertificate && skill.certificateFile) {
+    items.unshift({
+      label: 'مشاهده سند گواهینامه',
+      icon: FileText,
+      onClick: () => openCertificatePreview(skill),
+    });
+  }
+
+  return items;
+}
+
 function handleSkillVerified(updated: IMemberSkill) {
   const index = skillsList.value.findIndex((s) => s._id === updated._id);
   if (index !== -1) {
@@ -344,6 +398,50 @@ function resetFilters() {
           <RefreshCw class="w-4 h-4 ml-1.5" />
           بروزرسانی داده‌ها
         </Button>
+      </div>
+    </div>
+
+    <!-- EXPERT SCOPE RESTRICTION BANNER (Section 3.3) -->
+    <div
+      v-if="isExpert"
+      class="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-white dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-slate-900 border border-emerald-200 dark:border-emerald-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+    >
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-xs text-sm">
+          📌
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-emerald-950 dark:text-emerald-100">
+              رسته‌های تحت بررسی شما:
+            </span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+              دسترسی محدود کارشناسی
+            </span>
+          </div>
+          <p class="text-2xs text-emerald-800 dark:text-emerald-300 mt-0.5">
+            پرونده‌ها و مهارت‌های این کارتابل به صورت خودکار بر اساس صلاحیت‌های تخصصی انتساب‌یافته به حساب شما فیلتر شده‌اند.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1.5">
+        <template v-if="expertAssignedSpecializations.length > 0">
+          <span
+            v-for="spec in expertAssignedSpecializations"
+            :key="typeof spec === 'object' ? spec._id : spec"
+            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-white dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 shadow-2xs"
+          >
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            {{ typeof spec === 'object' ? spec.title : spec }}
+            <span v-if="typeof spec === 'object' && spec.code" class="text-[10px] opacity-70 font-mono" dir="ltr">
+              ({{ spec.code }})
+            </span>
+          </span>
+        </template>
+        <span v-else class="text-xs text-rose-600 font-bold">
+          هیچ رسته تخصصی به حساب کاربری شما انتساب نیافته است. لطفاً با مدیر ارشد تماس بگیرید.
+        </span>
       </div>
     </div>
 
@@ -677,41 +775,14 @@ function resetFilters() {
 
               <!-- 6. Expert Action Buttons (Section 3.4) -->
               <td class="py-3.5 px-4 text-center">
-                <div class="flex items-center justify-center gap-1.5">
-                  <!-- Direct Verify / Review Button -->
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    class="h-7 px-2.5 text-2xs font-bold text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-800 hover:bg-brand-50"
-                    title="بررسی کارشناسی و ثبت تصمیم"
-                    @click="openVerifyModal(skill)"
-                  >
-                    <ShieldCheck class="w-3.5 h-3.5 ml-1 text-brand-600" />
-                    کارشناسی
-                  </Button>
-
-                  <!-- Audit Trail Timeline Button -->
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    class="text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    title="مشاهده تاریخچه و لاگ گردش کار"
-                    @click="openTimelineModal(skill)"
-                  >
-                    <History class="w-3.5 h-3.5 shrink-0" />
-                  </Button>
-
-                  <!-- Open Member Profile Button -->
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    class="text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    title="مشاهده پرونده کامل عضو"
-                    @click="openMemberProfile(resolveMember(skill)?._id)"
-                  >
-                    <ExternalLink class="w-3.5 h-3.5 shrink-0" />
-                  </Button>
-                </div>
+                <TableActions
+                  primary-label="کارشناسی"
+                  :primary-icon="ShieldCheck"
+                  primary-title="بررسی کارشناسی و ثبت تصمیم"
+                  primary-variant="brand"
+                  @primary="openVerifyModal(skill)"
+                  :items="getSkillDeskActionItems(skill)"
+                />
               </td>
             </tr>
           </tbody>

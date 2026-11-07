@@ -1,5 +1,11 @@
 import apiClient from './client';
-import type { ApiResponse, LoginCredentials, LoginResponseData, AdminUser } from '@/types';
+import type {
+  ApiResponse,
+  LoginCredentials,
+  LoginResponseData,
+  AdminUser,
+  AdminLoginLogsResponseData,
+} from '@/types';
 
 export const authApi = {
   async login(credentials: LoginCredentials): Promise<ApiResponse<LoginResponseData>> {
@@ -9,6 +15,21 @@ export const authApi = {
 
   async getProfile(): Promise<ApiResponse<AdminUser>> {
     const response = await apiClient.get<ApiResponse<AdminUser>>('/auth/me');
+    return response.data;
+  },
+
+  /**
+   * Authenticated Admin's Own Login History
+   * GET /api/v1/auth/my-login-logs
+   */
+  async getMyLoginLogs(params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<AdminLoginLogsResponseData>> {
+    const response = await apiClient.get<ApiResponse<AdminLoginLogsResponseData>>(
+      '/auth/my-login-logs',
+      { params }
+    );
     return response.data;
   },
 
@@ -24,3 +45,4 @@ export const authApi = {
     return response.data;
   },
 };
+

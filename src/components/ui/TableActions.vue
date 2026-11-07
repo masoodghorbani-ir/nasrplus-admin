@@ -22,10 +22,11 @@ interface Props {
   primaryLabel?: string;
   primaryIcon?: Component;
   primaryTitle?: string;
-  primaryVariant?: 'brand' | 'outline' | 'default';
+  primaryVariant?: 'brand' | 'outline' | 'default' | 'primary' | 'danger';
+  primaryDisabled?: boolean;
   items?: ActionItem[];
   menuTitle?: string;
-  size?: 'sm' | 'default';
+  size?: 'xs' | 'sm' | 'default';
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -46,13 +47,53 @@ const coords = ref({ top: 0, left: 0 });
 
 const primaryVariantClasses = computed(() => {
   switch (props.primaryVariant) {
+    case 'primary':
+      return 'bg-brand-600 text-white hover:bg-brand-700 dark:bg-brand-600 dark:hover:bg-brand-500 border border-brand-600 shadow-xs shadow-brand-600/20';
     case 'outline':
       return 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:text-brand-600 dark:hover:text-brand-400';
     case 'default':
       return 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700';
+    case 'danger':
+      return 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800';
     case 'brand':
     default:
       return 'bg-brand-50 text-brand-700 hover:bg-brand-100 dark:bg-brand-950/50 dark:text-brand-300 dark:hover:bg-brand-900/60 border border-brand-200/80 dark:border-brand-800/80';
+  }
+});
+
+const sizeButtonClasses = computed(() => {
+  switch (props.size) {
+    case 'xs':
+      return 'h-7 px-2 text-2xs';
+    case 'sm':
+      return 'h-9 px-3.5 text-xs';
+    case 'default':
+    default:
+      return 'h-7.5 px-2.5 text-xs';
+  }
+});
+
+const sizeTriggerClasses = computed(() => {
+  switch (props.size) {
+    case 'xs':
+      return 'h-7 w-7';
+    case 'sm':
+      return 'h-9 w-9';
+    case 'default':
+    default:
+      return 'h-7.5 w-7.5';
+  }
+});
+
+const sizeIconClasses = computed(() => {
+  switch (props.size) {
+    case 'xs':
+      return 'w-3 h-3';
+    case 'sm':
+      return 'w-4 h-4';
+    case 'default':
+    default:
+      return 'w-3.5 h-3.5';
   }
 });
 
@@ -69,7 +110,11 @@ function updateCoords() {
     top = rect.top - menuHeight - 4;
   }
 
-  let left = rect.left;
+  // RTL preferred: align right edge of menu with right edge of button if possible
+  let left = rect.right - menuWidth;
+  if (left < 8) {
+    left = rect.left;
+  }
   if (left + menuWidth > window.innerWidth - 8) {
     left = window.innerWidth - menuWidth - 8;
   }
@@ -98,6 +143,7 @@ function toggleMenu() {
 }
 
 function handlePrimaryClick() {
+  if (props.primaryDisabled) return;
   emit('primary');
 }
 
@@ -152,9 +198,11 @@ onUnmounted(() => {
       <button
         v-if="primaryLabel"
         type="button"
+        :disabled="primaryDisabled"
         :class="[
-          'inline-flex items-center gap-1.5 rounded-lg text-xs font-medium transition-all duration-150 cursor-pointer select-none shadow-xs',
-          size === 'sm' ? 'h-9 px-3.5' : 'h-7.5 px-2.5',
+          'inline-flex items-center gap-1.5 rounded-lg font-medium transition-all duration-150 select-none shadow-xs',
+          primaryDisabled ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer',
+          sizeButtonClasses,
           primaryVariantClasses
         ]"
         :title="primaryTitle || primaryLabel"
@@ -163,7 +211,7 @@ onUnmounted(() => {
         <component
           :is="primaryIcon"
           v-if="primaryIcon"
-          class="w-3.5 h-3.5 shrink-0"
+          :class="['shrink-0', sizeIconClasses]"
         />
         <span class="whitespace-nowrap">{{ primaryLabel }}</span>
       </button>
@@ -176,7 +224,7 @@ onUnmounted(() => {
         type="button"
         :class="[
           'inline-flex items-center justify-center rounded-lg transition-all duration-150 cursor-pointer select-none shadow-xs',
-          size === 'sm' ? 'h-9 w-9' : 'h-7.5 w-7.5',
+          sizeTriggerClasses,
           'border border-slate-200 dark:border-slate-700/80',
           isOpen
             ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 ring-2 ring-brand-500/20 border-brand-400 dark:border-brand-600'
@@ -187,7 +235,7 @@ onUnmounted(() => {
         :aria-expanded="isOpen"
         @click.stop="toggleMenu"
       >
-        <MoreVertical :class="size === 'sm' ? 'w-4 h-4' : 'w-3.5 h-3.5'" />
+        <MoreVertical :class="sizeIconClasses" />
       </button>
 
       <!-- Dropdown Menu Teleported to Body -->

@@ -18,6 +18,8 @@ import {
   Select,
   ConfirmDialog,
   EmptyState,
+  TableActions,
+  type ActionItem,
 } from '@/components/ui';
 import {
   toPersianDigits,
@@ -278,6 +280,27 @@ async function handleDeleteAddress() {
   }
 }
 
+function getAddressActionItems(addr: MemberAddress): ActionItem[] {
+  const items: ActionItem[] = [];
+  if (!addr.isPrimary) {
+    items.push({
+      label: 'تنظیم به عنوان نشانی اصلی',
+      icon: Star,
+      onClick: () => handleSetPrimaryAddress(addr),
+    });
+  }
+  items.push({
+    label: 'حذف نشانی',
+    icon: Trash2,
+    danger: true,
+    divider: !addr.isPrimary,
+    onClick: () => {
+      addressToDelete.value = addr._id;
+    },
+  });
+  return items;
+}
+
 // --------------------------------------------------------------------------
 // TELEPHONE ACTIONS
 // --------------------------------------------------------------------------
@@ -383,6 +406,33 @@ async function handleDeleteTelephone() {
   } finally {
     phoneToDelete.value = null;
   }
+}
+
+function getPhoneActionItems(phone: MemberTelephone): ActionItem[] {
+  const items: ActionItem[] = [
+    {
+      label: 'کپی شماره تماس',
+      icon: Copy,
+      onClick: () => copyToClipboard(phone.phoneNumber, 'شماره تماس کپی شد'),
+    },
+  ];
+  if (!phone.isPrimary) {
+    items.push({
+      label: 'تنظیم به عنوان خط اصلی',
+      icon: Star,
+      onClick: () => handleSetPrimaryPhone(phone),
+    });
+  }
+  items.push({
+    label: 'حذف شماره تماس',
+    icon: Trash2,
+    danger: true,
+    divider: true,
+    onClick: () => {
+      phoneToDelete.value = phone._id;
+    },
+  });
+  return items;
 }
 
 function copyToClipboard(text: string, message = 'کپی شد') {
@@ -562,37 +612,16 @@ function copyToClipboard(text: string, message = 'کپی شد') {
                 </div>
               </div>
 
-              <!-- Item Actions -->
-              <div class="flex items-center gap-1 shrink-0 self-end sm:self-start">
-                <Button
-                  v-if="!addr.isPrimary"
-                  variant="ghost"
-                  size="sm"
-                  title="انتخاب به عنوان نشانی اصلی"
-                  @click="handleSetPrimaryAddress(addr)"
-                >
-                  <Star class="w-3.5 h-3.5 ml-1 text-slate-400" />
-                  اصلی کردن
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  title="ویرایش نشانی"
-                  @click="openEditAddressForm(addr)"
-                >
-                  <Edit2 class="w-3.5 h-3.5 ml-1" />
-                  ویرایش
-                </Button>
-
-                <button
-                  type="button"
-                  class="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer"
-                  title="حذف نشانی"
-                  @click="addressToDelete = addr._id"
-                >
-                  <Trash2 class="w-4 h-4" />
-                </button>
+              <!-- Item Actions (Single Primary + TableActions Dropdown) -->
+              <div class="shrink-0 self-end sm:self-start">
+                <TableActions
+                  primary-label="ویرایش"
+                  :primary-icon="Edit2"
+                  primary-title="ویرایش نشانی"
+                  primary-variant="outline"
+                  @primary="openEditAddressForm(addr)"
+                  :items="getAddressActionItems(addr)"
+                />
               </div>
             </div>
           </div>
@@ -687,44 +716,16 @@ function copyToClipboard(text: string, message = 'کپی شد') {
               </div>
             </div>
 
-            <!-- Phone Actions -->
-            <div class="flex items-center gap-1 shrink-0">
-              <button
-                type="button"
-                class="p-1.5 text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                title="کپی شماره"
-                @click="copyToClipboard(phone.phoneNumber, 'شماره تماس کپی شد')"
-              >
-                <Copy class="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                class="p-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                title="ویرایش"
-                @click="openEditPhoneForm(phone)"
-              >
-                <Edit2 class="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                v-if="!phone.isPrimary"
-                type="button"
-                class="p-1.5 text-amber-500 hover:text-amber-600 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors"
-                title="تنظیم به عنوان خط اصلی"
-                @click="handleSetPrimaryPhone(phone)"
-              >
-                <Star class="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                class="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
-                title="حذف شماره"
-                @click="phoneToDelete = phone._id"
-              >
-                <Trash2 class="w-3.5 h-3.5" />
-              </button>
+            <!-- Phone Actions (Single Primary + TableActions Dropdown) -->
+            <div class="shrink-0">
+              <TableActions
+                primary-label="ویرایش"
+                :primary-icon="Edit2"
+                primary-title="ویرایش شماره"
+                primary-variant="outline"
+                @primary="openEditPhoneForm(phone)"
+                :items="getPhoneActionItems(phone)"
+              />
             </div>
           </div>
         </div>

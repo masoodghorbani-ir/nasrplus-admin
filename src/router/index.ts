@@ -58,6 +58,25 @@ const routes: RouteRecordRaw[] = [
     redirect: '/register',
   },
 
+  // 3.1 Independent Member Inquiry (استعلام مستقل اعضا)
+  {
+    path: '/inquiry',
+    name: 'MemberInquiry',
+    component: () => import('@/views/public/MemberInquiryView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'سامانه استعلام اصالت و مجوز اعضا',
+    },
+  },
+  {
+    path: '/member-inquiry',
+    redirect: '/inquiry',
+  },
+  {
+    path: '/estelam',
+    redirect: '/inquiry',
+  },
+
   // 4. Admin Authentication
   {
     path: '/admin/login',
@@ -190,7 +209,22 @@ const routes: RouteRecordRaw[] = [
         meta: {
           requiresAuth: true,
           requiresSuperAdmin: true,
-          title: 'مدیران و سطوح دسترسی',
+          title: 'مدیران، کارشناسان و سطوح دسترسی',
+          permission: 'admins:manage',
+        },
+      },
+      {
+        path: 'users',
+        redirect: '/admin/admins',
+      },
+      {
+        path: 'login-logs',
+        name: 'AdminLoginLogs',
+        component: () => import('@/views/admins/LoginLogsView.vue'),
+        meta: {
+          requiresAuth: true,
+          requiresSuperAdmin: true,
+          title: 'لاگ‌های ورود به سیستم',
           permission: 'admins:manage',
         },
       },
@@ -198,6 +232,10 @@ const routes: RouteRecordRaw[] = [
   },
 
   // 6. Legacy Route Redirects to /admin
+  {
+    path: '/expert/reviews',
+    redirect: '/admin/desk/skills',
+  },
   {
     path: '/dashboard',
     redirect: '/admin/dashboard',
@@ -249,6 +287,14 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/admins',
     redirect: '/admin/admins',
+  },
+  {
+    path: '/users',
+    redirect: '/admin/admins',
+  },
+  {
+    path: '/login-logs',
+    redirect: '/admin/login-logs',
   },
 
   // 7. Fallback Catch-all Route

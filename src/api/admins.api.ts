@@ -1,5 +1,14 @@
 import apiClient from './client';
-import type { ApiResponse, AdminUser, CreateAdminInput, UpdateAdminInput, Permission } from '@/types';
+import type {
+  ApiResponse,
+  AdminUser,
+  CreateAdminInput,
+  UpdateAdminInput,
+  Permission,
+  AssignPermissionsInput,
+  AdminLoginLogsQuery,
+  AdminLoginLogsResponseData,
+} from '@/types';
 
 export const adminsApi = {
   async getAdmins(): Promise<ApiResponse<AdminUser[]>> {
@@ -27,6 +36,14 @@ export const adminsApi = {
     return response.data;
   },
 
+  async assignPermissions(
+    id: string,
+    data: AssignPermissionsInput | { permissionIds: string[] }
+  ): Promise<ApiResponse<AdminUser>> {
+    const response = await apiClient.put<ApiResponse<AdminUser>>(`/admins/${id}/permissions`, data);
+    return response.data;
+  },
+
   async getPermissions(): Promise<ApiResponse<Permission[]>> {
     const response = await apiClient.get<ApiResponse<Permission[]>>('/admins/permissions');
     return response.data;
@@ -41,4 +58,19 @@ export const adminsApi = {
     const response = await apiClient.post<ApiResponse<Permission>>('/admins/permissions', data);
     return response.data;
   },
+
+  /**
+   * System-wide Login Audit Logs (Superadmin Only)
+   * GET /api/v1/admins/login-logs
+   */
+  async getLoginLogs(
+    params?: AdminLoginLogsQuery
+  ): Promise<ApiResponse<AdminLoginLogsResponseData>> {
+    const response = await apiClient.get<ApiResponse<AdminLoginLogsResponseData>>(
+      '/admins/login-logs',
+      { params }
+    );
+    return response.data;
+  },
 };
+

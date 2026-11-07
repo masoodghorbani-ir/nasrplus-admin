@@ -21,6 +21,7 @@ import {
   Bookmark,
   BookOpen,
   LayoutGrid,
+  ShieldAlert,
 } from 'lucide-vue-next';
 
 interface NavItem {
@@ -77,9 +78,16 @@ const navItems: NavItem[] = [
   },
   {
     name: 'admins',
-    label: 'مدیران و دسترسی‌ها',
+    label: 'مدیران و کارشناسان',
     path: '/admin/admins',
     icon: ShieldCheck,
+    superAdminOnly: true,
+  },
+  {
+    name: 'login-logs',
+    label: 'لاگ‌های ورود به سیستم',
+    path: '/admin/login-logs',
+    icon: ShieldAlert,
     superAdminOnly: true,
   },
 ];

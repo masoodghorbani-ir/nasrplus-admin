@@ -798,26 +798,14 @@ function getStatusLabel(status?: string): string {
 
               <!-- Actions -->
               <td class="py-3.5 px-4 text-center">
-                <div class="inline-flex items-center justify-center gap-2">
-                  <!-- Verify Decision Button (Primary Button Kept As-Is!) -->
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    class="text-xs font-bold shadow-xs shrink-0"
-                    title="بررسی و تائید / رد مدرک"
-                    @click="openVerifyModal(item)"
-                  >
-                    <ShieldCheck class="w-3.5 h-3.5 ml-1" />
-                    بررسی مدرک
-                  </Button>
-
-                  <!-- More Actions Dropdown (...) -->
-                  <TableActions
-                    size="sm"
-                    menu-title="سایر عملیات"
-                    :items="getTableActionItems(item)"
-                  />
-                </div>
+                <TableActions
+                  primary-label="بررسی مدرک"
+                  :primary-icon="ShieldCheck"
+                  primary-title="بررسی و تائید / رد مدرک"
+                  primary-variant="primary"
+                  @primary="openVerifyModal(item)"
+                  :items="getTableActionItems(item)"
+                />
               </td>
             </tr>
           </tbody>

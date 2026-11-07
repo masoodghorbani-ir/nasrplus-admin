@@ -8,5 +8,6 @@ export * from './public-registration.types';
 export * from './academic-qualification.types';
 export * from './member-photo.types';
 export * from './member-skill.types';
+export * from './inquiry.types';
 export type { IMemberSummary } from './member-photo.types';
 

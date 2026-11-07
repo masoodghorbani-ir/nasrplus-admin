@@ -26,7 +26,8 @@ export function toLatinDigits(value: string | null | undefined): string {
 export function formatPersianDate(
   dateInput: string | Date | null | undefined,
   includeTime = false,
-  persianDigits = true
+  persianDigits = true,
+  includeSeconds = false
 ): string {
   if (!dateInput) return '—';
   try {
@@ -55,6 +56,7 @@ export function formatPersianDate(
         ? {
             hour: '2-digit',
             minute: '2-digit',
+            ...(includeSeconds ? { second: '2-digit' } : {}),
             hour12: false,
           }
         : {}),
@@ -69,13 +71,29 @@ export function formatPersianDate(
     if (includeTime) {
       const hour = parts.find((p) => p.type === 'hour')?.value || '00';
       const minute = parts.find((p) => p.type === 'minute')?.value || '00';
-      formatted += ` - ${hour}:${minute}`;
+      if (includeSeconds) {
+        const second = parts.find((p) => p.type === 'second')?.value || '00';
+        formatted += ` - ${hour}:${minute}:${second}`;
+      } else {
+        formatted += ` - ${hour}:${minute}`;
+      }
     }
 
     return persianDigits ? toPersianDigits(formatted) : formatted;
   } catch {
     return '—';
   }
+}
+
+/**
+ * Format Persian date and time with optional seconds
+ */
+export function formatPersianDateTime(
+  dateInput: string | Date | null | undefined,
+  includeSeconds = true,
+  persianDigits = true
+): string {
+  return formatPersianDate(dateInput, true, persianDigits, includeSeconds);
 }
 
 /**

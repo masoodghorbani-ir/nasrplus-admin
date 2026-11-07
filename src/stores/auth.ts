@@ -25,6 +25,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => Boolean(token.value && user.value));
   const isSuperAdmin = computed(() => user.value?.type === 'SUPERADMIN');
+  const isExpert = computed(() => user.value?.type === 'EXPERT');
+  const isAdmin = computed(() => user.value?.type === 'ADMIN');
+  const reviewableSpecializations = computed(() => user.value?.reviewableSpecializations || []);
 
   async function login(credentials: LoginCredentials): Promise<boolean> {
     isLoading.value = true;
@@ -77,6 +80,18 @@ export const useAuthStore = defineStore('auth', () => {
     if (!user.value) return false;
     if (user.value.type === 'SUPERADMIN') return true;
 
+    // Experts have inherent access to dossier / skills reviewing
+    if (user.value.type === 'EXPERT') {
+      if (
+        permissionKey === 'members:read' ||
+        permissionKey === 'desk:read' ||
+        permissionKey === 'skills:verify' ||
+        permissionKey === 'qualifications:verify'
+      ) {
+        return true;
+      }
+    }
+
     if (!user.value.permissions) return false;
 
     return user.value.permissions.some((p: Permission | string) => {
@@ -106,6 +121,9 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     isAuthenticated,
     isSuperAdmin,
+    isExpert,
+    isAdmin,
+    reviewableSpecializations,
     login,
     logout,
     fetchProfile,

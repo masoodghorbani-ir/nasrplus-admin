@@ -9,6 +9,7 @@ import {
   Moon,
   ArrowLeft,
   Building2,
+  Search,
 } from 'lucide-vue-next';
 
 const router = useRouter();
@@ -20,6 +21,10 @@ function goToAdmin() {
 
 function goToProfile() {
   router.push('/profile');
+}
+
+function goToInquiry() {
+  router.push('/inquiry');
 }
 </script>
 
@@ -185,6 +190,44 @@ function goToProfile() {
               <ArrowLeft class="w-4 h-4 transition-transform group-hover:-translate-x-1" />
             </button>
           </div>
+        </div>
+      </div>
+
+      <!-- 3. Independent Member Inquiry Quick Action -->
+      <div class="mt-8 max-w-4xl mx-auto w-full">
+        <div
+          class="group relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-3xl p-5 sm:p-6 border border-slate-200/90 dark:border-slate-800 shadow-lg hover:border-brand-500/50 hover:shadow-xl transition-all duration-300 flex flex-col sm:flex-row items-center justify-between gap-4 cursor-pointer"
+          @click="goToInquiry"
+        >
+          <div class="flex items-center gap-4 text-center sm:text-right">
+            <div
+              class="w-12 h-12 rounded-2xl bg-brand-50 dark:bg-brand-950/70 border border-brand-200/80 dark:border-brand-800/60 flex items-center justify-center text-brand-600 dark:text-brand-400 group-hover:bg-brand-600 group-hover:text-white transition-colors shrink-0 shadow-xs"
+            >
+              <Search class="w-6 h-6" />
+            </div>
+            <div>
+              <div class="flex items-center justify-center sm:justify-start gap-2">
+                <h3 class="font-black text-base sm:text-lg text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                  استعلام اصالت و مجوز اعضای صنف (Member Inquiry)
+                </h3>
+                <span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-50 dark:bg-brand-950/70 text-brand-700 dark:text-brand-300 border border-brand-200/80 dark:border-brand-800">
+                  عمومی
+                </span>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                استعلام برخط اعتبار پروانه، رسته تخصصی، رتبه و وضعیت عضویت با شناسه عضویت و کد ملی
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-brand-600 hover:text-white dark:bg-slate-800 dark:hover:bg-brand-600 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-bold flex items-center gap-2 transition-all shrink-0 cursor-pointer shadow-xs group-hover:bg-brand-600 group-hover:text-white"
+            @click.stop="goToInquiry"
+          >
+            <span>ورود به سامانه استعلام</span>
+            <ArrowLeft class="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+          </button>
         </div>
       </div>
     </main>
